@@ -8,7 +8,8 @@
       "Bash(firebase deploy *)",
       "Bash(cp -r \"c:/Users/bhl/OneDrive - YBM, Inc/MY-WORKSPACE/together/index.html\" .)",
       "Bash(cp -r \"c:/Users/bhl/OneDrive - YBM, Inc/MY-WORKSPACE/together/resource\" .)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(npm install *)"
     ]
   }
 }
