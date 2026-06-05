@@ -5,7 +5,10 @@
       "Bash(git commit -m 'docs: Add setup guide and environment template *)",
       "Bash(git commit -m 'config: Update Firebase configuration with actual project settings *)",
       "Bash(git commit -m 'fix: Correct layout structure for screen display and app-main scrolling *)",
-      "Bash(firebase deploy *)"
+      "Bash(firebase deploy *)",
+      "Bash(cp -r \"c:/Users/bhl/OneDrive - YBM, Inc/MY-WORKSPACE/together/index.html\" .)",
+      "Bash(cp -r \"c:/Users/bhl/OneDrive - YBM, Inc/MY-WORKSPACE/together/resource\" .)",
+      "Bash(git commit *)"
     ]
   }
 }

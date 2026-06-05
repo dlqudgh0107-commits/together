@@ -1,4 +1,8 @@
-// Firebase initialization
+// ===== Firebase 초기화 =====
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, onSnapshot, query, orderBy, where, updateDoc, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
 const firebaseConfig = {
   apiKey: "AIzaSyCcwW16cgi6kt4ztdW6LMwpJdBNJTlaPxY",
   authDomain: "together-app-6cabd.firebaseapp.com",
@@ -9,304 +13,137 @@ const firebaseConfig = {
   measurementId: "G-354V84FLB7"
 };
 
-const app = firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
 
-// ===== Auth Functions =====
-const getCurrentUser = async () => {
-  return new Promise((resolve) => {
-    auth.onAuthStateChanged((user) => {
-      resolve(user);
-    });
-  });
-};
-
-const signInWithGoogle = async () => {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  try {
-    const result = await auth.signInWithPopup(provider);
-    return result.user;
-  } catch (error) {
-    console.error('Sign in error:', error);
-    throw error;
-  }
-};
-
-const signOut = async () => {
-  try {
-    await auth.signOut();
-  } catch (error) {
-    console.error('Sign out error:', error);
-    throw error;
-  }
-};
-
-// ===== Group Functions =====
-const getUserGroups = async (userId) => {
-  try {
-    const snapshot = await db.collection('groups')
-      .where('members', 'array-contains', userId)
-      .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    console.error('Get groups error:', error);
-    return [];
-  }
-};
-
-const createGroup = async (userId, groupName) => {
-  try {
-    const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const docRef = await db.collection('groups').add({
-      name: groupName,
-      ownerId: userId,
-      members: [userId],
-      inviteCode: inviteCode,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-    return { id: docRef.id, name: groupName, inviteCode };
-  } catch (error) {
-    console.error('Create group error:', error);
-    throw error;
-  }
-};
-
-const getGroupInfo = async (groupId) => {
-  try {
-    const doc = await db.collection('groups').doc(groupId).get();
-    return doc.exists ? { id: doc.id, ...doc.data() } : null;
-  } catch (error) {
-    console.error('Get group info error:', error);
-    return null;
-  }
-};
-
-const joinGroup = async (userId, inviteCode) => {
-  try {
-    const snapshot = await db.collection('groups')
-      .where('inviteCode', '==', inviteCode)
-      .get();
-    if (snapshot.empty) {
-      throw new Error('유효하지 않은 초대 코드입니다.');
-    }
-    const groupDoc = snapshot.docs[0];
-    await groupDoc.ref.update({
-      members: firebase.firestore.FieldValue.arrayUnion(userId),
-      updatedAt: new Date()
-    });
-    return { id: groupDoc.id, ...groupDoc.data() };
-  } catch (error) {
-    console.error('Join group error:', error);
-    throw error;
-  }
-};
-
-// ===== Member Functions =====
-const getGroupMembers = async (groupId) => {
-  try {
-    const groupDoc = await db.collection('groups').doc(groupId).get();
-    if (!groupDoc.exists) return [];
-    const memberIds = groupDoc.data().members || [];
-    const members = [];
-    for (const memberId of memberIds) {
-      const userDoc = await db.collection('users').doc(memberId).get();
-      if (userDoc.exists) {
-        members.push({ id: memberId, ...userDoc.data() });
-      }
-    }
-    return members;
-  } catch (error) {
-    console.error('Get members error:', error);
-    return [];
-  }
-};
-
-const updateUserProfile = async (userId, data) => {
-  try {
-    await db.collection('users').doc(userId).set(data, { merge: true });
-  } catch (error) {
-    console.error('Update user profile error:', error);
-    throw error;
-  }
-};
-
-// ===== Schedule Functions =====
-const addSchedule = async (groupId, scheduleData) => {
-  try {
-    const docRef = await db.collection('groups').doc(groupId)
-      .collection('schedules').add({
-        ...scheduleData,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-    return docRef.id;
-  } catch (error) {
-    console.error('Add schedule error:', error);
-    throw error;
-  }
-};
-
-const updateSchedule = async (groupId, scheduleId, data) => {
-  try {
-    await db.collection('groups').doc(groupId)
-      .collection('schedules').doc(scheduleId).update({
-        ...data,
-        updatedAt: new Date()
-      });
-    await addActivity(groupId, {
-      type: 'schedule_updated',
-      scheduleId: scheduleId,
-      message: `일정이 수정되었습니다: ${data.title}`
-    });
-  } catch (error) {
-    console.error('Update schedule error:', error);
-    throw error;
-  }
-};
-
-const deleteSchedule = async (groupId, scheduleId) => {
-  try {
-    await db.collection('groups').doc(groupId)
-      .collection('schedules').doc(scheduleId).delete();
-    await addActivity(groupId, {
-      type: 'schedule_deleted',
-      scheduleId: scheduleId,
-      message: '일정이 삭제되었습니다.'
-    });
-  } catch (error) {
-    console.error('Delete schedule error:', error);
-    throw error;
-  }
-};
-
-const listenSchedules = (groupId, callback) => {
-  return db.collection('groups').doc(groupId)
-    .collection('schedules')
-    .orderBy('startDate', 'asc')
-    .onSnapshot(snapshot => {
-      const schedules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(schedules);
-    }, error => console.error('Schedule listener error:', error));
-};
-
-// ===== Todo Functions =====
-const addTodo = async (groupId, todoData) => {
-  try {
-    const docRef = await db.collection('groups').doc(groupId)
-      .collection('todos').add({
-        ...todoData,
-        completed: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-    return docRef.id;
-  } catch (error) {
-    console.error('Add todo error:', error);
-    throw error;
-  }
-};
-
-const updateTodo = async (groupId, todoId, data) => {
-  try {
-    await db.collection('groups').doc(groupId)
-      .collection('todos').doc(todoId).update({
-        ...data,
-        updatedAt: new Date()
-      });
-    await addActivity(groupId, {
-      type: 'todo_updated',
-      todoId: todoId,
-      message: `할일이 수정되었습니다: ${data.title}`
-    });
-  } catch (error) {
-    console.error('Update todo error:', error);
-    throw error;
-  }
-};
-
-const deleteTodo = async (groupId, todoId) => {
-  try {
-    await db.collection('groups').doc(groupId)
-      .collection('todos').doc(todoId).delete();
-    await addActivity(groupId, {
-      type: 'todo_deleted',
-      todoId: todoId,
-      message: '할일이 삭제되었습니다.'
-    });
-  } catch (error) {
-    console.error('Delete todo error:', error);
-    throw error;
-  }
-};
-
-const completeTodo = async (groupId, todoId) => {
-  try {
-    await db.collection('groups').doc(groupId)
-      .collection('todos').doc(todoId).update({
-        completed: true,
-        completedAt: new Date(),
-        updatedAt: new Date()
-      });
-    await addActivity(groupId, {
-      type: 'todo_completed',
-      todoId: todoId,
-      message: '할일이 완료되었습니다.'
-    });
-  } catch (error) {
-    console.error('Complete todo error:', error);
-    throw error;
-  }
-};
-
-const listenTodos = (groupId, callback) => {
-  return db.collection('groups').doc(groupId)
-    .collection('todos')
-    .orderBy('dueDate', 'asc')
-    .onSnapshot(snapshot => {
-      const todos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(todos);
-    }, error => console.error('Todo listener error:', error));
-};
-
-// ===== Activity Log =====
-const addActivity = async (groupId, activityData) => {
-  try {
-    const user = await getCurrentUser();
-    await db.collection('groups').doc(groupId)
-      .collection('activities').add({
-        ...activityData,
-        userId: user?.uid,
-        userName: user?.displayName,
-        createdAt: new Date()
-      });
-  } catch (error) {
-    console.error('Add activity error:', error);
-  }
-};
-
-// ===== Export =====
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    getCurrentUser,
-    signInWithGoogle,
-    signOut,
-    getUserGroups,
-    createGroup,
-    getGroupInfo,
-    joinGroup,
-    getGroupMembers,
-    updateUserProfile,
-    addSchedule,
-    updateSchedule,
-    deleteSchedule,
-    listenSchedules,
-    addTodo,
-    updateTodo,
-    deleteTodo,
-    completeTodo,
-    listenTodos,
-    addActivity
-  };
+// ===== Auth =====
+async function signInWithGoogle() {
+  const result = await signInWithPopup(auth, googleProvider);
+  const user = result.user;
+  await setDoc(doc(db, 'users', user.uid), {
+    displayName: user.displayName,
+    email: user.email,
+    photoURL: user.photoURL,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  return user;
 }
+
+async function signOutUser() {
+  await signOut(auth);
+}
+
+// ===== Group =====
+async function createGroup(name, type, userId, userNickname, userIcon, userColor) {
+  const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const groupRef = await addDoc(collection(db, 'groups'), {
+    name, type, inviteCode, createdBy: userId, createdAt: serverTimestamp()
+  });
+  await setDoc(doc(db, 'groups', groupRef.id, 'members', userId), {
+    nickname: userNickname, icon: userIcon, color: userColor, role: 'admin', joinedAt: serverTimestamp()
+  });
+  await setDoc(doc(db, 'users', userId, 'groups', groupRef.id), { name, type, joinedAt: serverTimestamp() });
+  return groupRef.id;
+}
+
+async function joinGroupByCode(inviteCode, userId, userNickname, userIcon, userColor) {
+  const q = query(collection(db, 'groups'), where('inviteCode', '==', inviteCode.toUpperCase()));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) throw new Error('초대 코드를 찾을 수 없어요.');
+  const groupDoc = snapshot.docs[0];
+  const groupId = groupDoc.id;
+  const groupData = groupDoc.data();
+  await setDoc(doc(db, 'groups', groupId, 'members', userId), {
+    nickname: userNickname, icon: userIcon, color: userColor, role: 'member', joinedAt: serverTimestamp()
+  });
+  await setDoc(doc(db, 'users', userId, 'groups', groupId), { name: groupData.name, type: groupData.type, joinedAt: serverTimestamp() });
+  return groupId;
+}
+
+async function getUserGroups(userId) {
+  const snapshot = await getDocs(collection(db, 'users', userId, 'groups'));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function getGroupMembers(groupId) {
+  const snapshot = await getDocs(collection(db, 'groups', groupId, 'members'));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// ===== Schedule =====
+async function addSchedule(groupId, data, userId, userNickname) {
+  const ref = await addDoc(collection(db, 'groups', groupId, 'schedules'), {
+    ...data, createdBy: userId, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+  });
+  await addActivity(groupId, { type: 'schedule_add', userId, nickname: userNickname, targetTitle: data.title, message: `"${data.title}" 일정을 등록했어요.` });
+  return ref.id;
+}
+
+async function updateSchedule(groupId, scheduleId, data, userId, userNickname) {
+  await updateDoc(doc(db, 'groups', groupId, 'schedules', scheduleId), { ...data, updatedAt: serverTimestamp() });
+  await addActivity(groupId, { type: 'schedule_update', userId, nickname: userNickname, targetTitle: data.title, message: `"${data.title}" 일정을 수정했어요.` });
+}
+
+async function deleteSchedule(groupId, scheduleId, title, userId, userNickname) {
+  await deleteDoc(doc(db, 'groups', groupId, 'schedules', scheduleId));
+  await addActivity(groupId, { type: 'schedule_delete', userId, nickname: userNickname, targetTitle: title, message: `"${title}" 일정을 삭제했어요.` });
+}
+
+function listenSchedules(groupId, callback) {
+  const q = query(collection(db, 'groups', groupId, 'schedules'), orderBy('date', 'asc'));
+  return onSnapshot(q, snapshot => {
+    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(items);
+  });
+}
+
+// ===== Todo =====
+async function addTodo(groupId, data, userId, userNickname) {
+  const ref = await addDoc(collection(db, 'groups', groupId, 'todos'), {
+    ...data, status: 'todo', createdBy: userId, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+  });
+  await addActivity(groupId, { type: 'todo_add', userId, nickname: userNickname, targetTitle: data.title, message: `"${data.title}" 할 일을 추가했어요.` });
+  return ref.id;
+}
+
+async function toggleTodo(groupId, todoId, currentStatus, title, userId, userNickname) {
+  const newStatus = currentStatus === 'todo' ? 'done' : 'todo';
+  await updateDoc(doc(db, 'groups', groupId, 'todos', todoId), { status: newStatus, updatedAt: serverTimestamp() });
+  if (newStatus === 'done') {
+    await addActivity(groupId, { type: 'todo_done', userId, nickname: userNickname, targetTitle: title, message: `"${title}" 완료!` });
+  }
+}
+
+function listenTodos(groupId, callback) {
+  const q = query(collection(db, 'groups', groupId, 'todos'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, snapshot => {
+    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(items);
+  });
+}
+
+// ===== Activity (알림장) =====
+async function addActivity(groupId, data) {
+  await addDoc(collection(db, 'groups', groupId, 'activities'), {
+    ...data, createdAt: serverTimestamp()
+  });
+}
+
+function listenActivities(groupId, callback) {
+  const q = query(collection(db, 'groups', groupId, 'activities'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, snapshot => {
+    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(items);
+  });
+}
+
+export {
+  auth, db, onAuthStateChanged,
+  signInWithGoogle, signOutUser,
+  createGroup, joinGroupByCode, getUserGroups, getGroupMembers,
+  addSchedule, updateSchedule, deleteSchedule, listenSchedules,
+  addTodo, toggleTodo, listenTodos,
+  addActivity, listenActivities
+};

@@ -1,656 +1,494 @@
-// ===== Global State =====
+import {
+  auth, onAuthStateChanged,
+  signInWithGoogle, signOutUser,
+  createGroup, joinGroupByCode, getUserGroups, getGroupMembers,
+  addSchedule, updateSchedule, deleteSchedule, listenSchedules,
+  addTodo, toggleTodo, listenTodos,
+  listenActivities
+} from './firebase.js';
+import { getAISummary } from './ai.js';
+
+// ===== 상태 =====
 let currentUser = null;
 let currentGroup = null;
-let currentGroupData = null;
-let schedules = [];
-let todos = [];
-let members = [];
+let currentMembers = [];
+let allSchedules = [];
+let allTodos = [];
 let activeTab = 'home';
-let scheduleUnsubscribe = null;
-let todoUnsubscribe = null;
-let editingScheduleId = null;
-let editingTodoId = null;
-let currentTodoFilter = 'all';
-let notifications = [];
+let filterMemberId = 'all';
+let unsubSchedules = null;
+let unsubTodos = null;
+let unsubActivities = null;
 
-// ===== Initialize =====
-document.addEventListener('DOMContentLoaded', () => {
-  initializeApp();
-});
+// ===== 프로필 아이콘 목록 =====
+const ICONS = ['😊','😎','🥳','🤩','😇','🦁','🐯','🦊','🐻','🐼','🐨','🐸','🐙','🦋','🌸','⭐','🔥','💎','🎯','🎸'];
+const COLORS = ['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#cc5de8','#f783ac','#a9e34b','#38d9a9','#74c0fc'];
 
-const initializeApp = async () => {
-  currentUser = await getCurrentUser();
+// ===== 화면 전환 =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
 
-  if (currentUser) {
-    await updateUserProfile(currentUser.uid, {
-      name: currentUser.displayName,
-      email: currentUser.email,
-      photoURL: currentUser.photoURL,
-      lastLogin: new Date()
-    });
+// ===== 로딩 =====
+function hideLoading() {
+  const el = document.querySelector('.loading-screen');
+  if (el) { el.classList.add('hide'); setTimeout(() => el.style.display = 'none', 300); }
+}
 
-    const groups = await getUserGroups(currentUser.uid);
-    if (groups.length > 0) {
-      selectGroup(groups[0]);
-    } else {
-      showScreen('screen-group');
-      loadGroupList();
-    }
-  } else {
-    showScreen('screen-login');
-  }
+// ===== 날짜 포맷 =====
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+}
+function isToday(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.getTime() === today.getTime();
+}
+function isFutureOrToday(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return new Date(dateStr + 'T00:00:00') >= today;
+}
+function timeAgo(ts) {
+  if (!ts) return '';
+  const now = Date.now();
+  const t = ts.toDate ? ts.toDate().getTime() : new Date(ts).getTime();
+  const diff = Math.floor((now - t) / 1000);
+  if (diff < 60) return '방금';
+  if (diff < 3600) return `${Math.floor(diff/60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}시간 전`;
+  return `${Math.floor(diff/86400)}일 전`;
+}
 
-  setupEventListeners();
-};
-
-// ===== Screen Management =====
-const showScreen = (screenId) => {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('screen--active'));
-  const screen = document.getElementById(screenId);
-  if (screen) {
-    screen.classList.add('screen--active');
-  }
-};
-
-// ===== Event Listeners Setup =====
-const setupEventListeners = () => {
-  // Login
-  document.getElementById('login-btn')?.addEventListener('click', handleLogin);
-
-  // Group Management
-  document.getElementById('create-group-btn')?.addEventListener('click', openCreateGroupForm);
-  document.getElementById('join-group-btn')?.addEventListener('click', openJoinGroupForm);
-
-  // Header Menus
-  document.getElementById('menu-left-btn')?.addEventListener('click', toggleSidebar);
-  document.getElementById('menu-right-btn')?.addEventListener('click', toggleDropdownMenu);
-  document.getElementById('sidebar-close-btn')?.addEventListener('click', closeSidebar);
-  document.getElementById('sidebar-overlay')?.addEventListener('click', closeSidebar);
-
-  // Sidebar Items
-  document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
-  document.getElementById('settings-btn')?.addEventListener('click', openSettings);
-
-  // Dropdown Menu Items
-  document.getElementById('group-settings-btn')?.addEventListener('click', openGroupSettings);
-  document.getElementById('invite-btn')?.addEventListener('click', openInviteModal);
-  document.getElementById('leave-group-btn')?.addEventListener('click', leaveGroup);
-
-  // Tabs
-  document.querySelectorAll('.app-tabs__tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const tabName = tab.dataset.tab;
-      switchTab(tabName);
+// ===== 멤버바 렌더 =====
+function renderMemberBar() {
+  const bar = document.querySelector('[data-member-bar]');
+  if (!bar) return;
+  bar.innerHTML = `
+    <div class="member-chip member-chip--all" data-member-id="all">
+      <div class="member-chip__avatar ${filterMemberId === 'all' ? 'active' : ''}">전체</div>
+      <span class="member-chip__name">전체</span>
+    </div>
+    ${currentMembers.map(m => `
+      <div class="member-chip" data-member-id="${m.id}">
+        <div class="member-chip__avatar ${filterMemberId === m.id ? 'active' : ''}" style="background:${m.color}20; border-color:${filterMemberId === m.id ? m.color : 'transparent'}">
+          <span>${m.icon}</span>
+        </div>
+        <span class="member-chip__name">${m.nickname}</span>
+      </div>
+    `).join('')}
+  `;
+  bar.querySelectorAll('.member-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      filterMemberId = chip.dataset.memberId;
+      renderMemberBar();
+      renderScheduleList();
     });
   });
+}
 
-  // FAB Button
-  document.getElementById('fab-button')?.addEventListener('click', toggleFabMenu);
-  document.getElementById('fab-schedule')?.addEventListener('click', () => {
-    closeFabMenu();
+// ===== 일정 리스트 렌더 =====
+function renderScheduleList() {
+  const container = document.querySelector('[data-schedule-list]');
+  if (!container) return;
+
+  const filtered = allSchedules.filter(s => {
+    if (!isFutureOrToday(s.date)) return false;
+    if (filterMemberId !== 'all' && !(s.memberIds || []).includes(filterMemberId)) return false;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state">등록된 일정이 없어요 🗓</div>';
+    return;
+  }
+
+  // 날짜별 그룹핑
+  const grouped = {};
+  filtered.forEach(s => {
+    if (!grouped[s.date]) grouped[s.date] = [];
+    grouped[s.date].push(s);
+  });
+
+  container.innerHTML = Object.keys(grouped).sort().map(date => `
+    <div class="date-label">
+      ${formatDate(date)}
+      ${isToday(date) ? '<span class="date-label__today">오늘</span>' : ''}
+    </div>
+    ${grouped[date].map(s => {
+      const member = currentMembers.find(m => (s.memberIds||[]).includes(m.id));
+      const color = member ? member.color : '#1677ff';
+      return `
+        <div class="schedule-card" data-schedule-id="${s.id}" style="margin: 0 20px 8px;">
+          <div class="schedule-card__dot" style="background:${color}"></div>
+          <div class="schedule-card__body">
+            <div class="schedule-card__title">${s.title}</div>
+            <div class="schedule-card__meta">
+              ${s.time ? `<span>🕐 ${s.time}</span>` : ''}
+              ${member ? `<span class="schedule-card__member">
+                <span class="schedule-card__member-dot" style="background:${member.color}20">${member.icon}</span>
+                ${member.nickname}
+              </span>` : '<span>전체</span>'}
+            </div>
+          </div>
+          <span class="schedule-card__arrow">›</span>
+        </div>
+      `;
+    }).join('')}
+  `).join('');
+
+  container.querySelectorAll('.schedule-card').forEach(card => {
+    card.addEventListener('click', () => openScheduleDetail(card.dataset.scheduleId));
+  });
+}
+
+// ===== Todo 렌더 =====
+function renderTodoList() {
+  const container = document.querySelector('[data-todo-list]');
+  if (!container) return;
+
+  const filtered = filterMemberId === 'all'
+    ? allTodos
+    : allTodos.filter(t => t.assigneeId === filterMemberId);
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state">할 일이 없어요 ✅</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(t => {
+    const member = currentMembers.find(m => m.id === t.assigneeId);
+    const isDone = t.status === 'done';
+    return `
+      <div class="todo-card" data-todo-id="${t.id}" data-status="${t.status}" data-title="${t.title}" style="margin: 0 20px 8px;">
+        <div class="todo-card__check ${isDone ? 'done' : ''}"></div>
+        <div class="todo-card__body">
+          <div class="todo-card__title ${isDone ? 'done' : ''}">${t.title}</div>
+          <div class="todo-card__assignee">
+            ${member ? `${member.icon} ${member.nickname}` : '담당자 없음'}
+            ${t.dueDate ? ` · <span class="todo-card__due">D-${Math.max(0, Math.ceil((new Date(t.dueDate) - new Date()) / 86400000))}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('.todo-card').forEach(card => {
+    card.addEventListener('click', () => {
+      toggleTodo(currentGroup.id, card.dataset.todoId, card.dataset.status, card.dataset.title, currentUser.uid, getMemberNickname());
+    });
+  });
+}
+
+// ===== Feed 렌더 =====
+function renderFeed(activities) {
+  const container = document.querySelector('[data-feed-list]');
+  if (!container) return;
+  if (!activities.length) {
+    container.innerHTML = '<div class="empty-state">아직 활동이 없어요 📋</div>';
+    return;
+  }
+  container.innerHTML = activities.slice(0, 50).map(a => {
+    const member = currentMembers.find(m => m.id === a.userId);
+    const icon = member ? member.icon : '👤';
+    const color = member ? member.color : '#d9d9d9';
+    return `
+      <div class="feed-item">
+        <div class="feed-item__avatar" style="background:${color}20">${icon}</div>
+        <div class="feed-item__body">
+          <div class="feed-item__header">
+            <span class="feed-item__name">${a.nickname || '멤버'}</span>
+            <span class="feed-item__time">${timeAgo(a.createdAt)}</span>
+          </div>
+          <div class="feed-item__message">${a.message}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== AI 요약 =====
+async function loadAISummary() {
+  const card = document.querySelector('[data-ai-card]');
+  if (!card) return;
+  card.innerHTML = `<div class="ai-card__label">AI 요약</div>
+    <div class="ai-card__loading">
+      <div class="ai-card__loading-dot"></div>
+      <div class="ai-card__loading-dot"></div>
+      <div class="ai-card__loading-dot"></div>
+    </div>`;
+  try {
+    const summary = await getAISummary(allSchedules, allTodos, currentMembers);
+    card.innerHTML = `<div class="ai-card__label">✨ AI 요약</div><div class="ai-card__text">${summary}</div>`;
+  } catch(e) {
+    card.innerHTML = `<div class="ai-card__label">AI 요약</div><div class="ai-card__text">요약을 불러올 수 없어요.</div>`;
+  }
+}
+
+// ===== 홈 렌더 =====
+function renderHome() {
+  renderMemberBar();
+  renderScheduleList();
+  renderTodoList();
+}
+
+// ===== 유틸 =====
+function getMemberNickname() {
+  const m = currentMembers.find(m => m.id === currentUser.uid);
+  return m ? m.nickname : currentUser.displayName;
+}
+
+// ===== 일정 상세 모달 =====
+function openScheduleDetail(scheduleId) {
+  const s = allSchedules.find(s => s.id === scheduleId);
+  if (!s) return;
+  const member = currentMembers.find(m => (s.memberIds||[]).includes(m.id));
+  const overlay = document.querySelector('[data-modal="schedule-detail"]');
+  overlay.querySelector('.modal__title').textContent = s.title;
+  overlay.querySelector('[data-detail-date]').textContent = formatDate(s.date) + (s.time ? ' ' + s.time : '');
+  overlay.querySelector('[data-detail-member]').textContent = member ? `${member.icon} ${member.nickname}` : '전체';
+  overlay.querySelector('[data-detail-memo]').textContent = s.memo || '메모 없음';
+  overlay.querySelector('[data-detail-edit]').onclick = () => { overlay.classList.remove('active'); openScheduleForm(s); };
+  overlay.querySelector('[data-detail-delete]').onclick = async () => {
+    if (confirm('일정을 삭제할까요?')) {
+      await deleteSchedule(currentGroup.id, scheduleId, s.title, currentUser.uid, getMemberNickname());
+      overlay.classList.remove('active');
+    }
+  };
+  overlay.classList.add('active');
+}
+
+// ===== 일정 등록/수정 모달 =====
+function openScheduleForm(existing = null) {
+  const overlay = document.querySelector('[data-modal="schedule-form"]');
+  const form = overlay.querySelector('[data-schedule-form]');
+  overlay.querySelector('.modal__title').textContent = existing ? '일정 수정' : '일정 등록';
+  form.querySelector('[data-field="title"]').value = existing?.title || '';
+  form.querySelector('[data-field="date"]').value = existing?.date || new Date().toISOString().split('T')[0];
+  form.querySelector('[data-field="time"]').value = existing?.time || '';
+  form.querySelector('[data-field="memo"]').value = existing?.memo || '';
+
+  // 멤버 선택
+  const memberSelect = form.querySelector('[data-field="member"]');
+  memberSelect.innerHTML = `<option value="">전체</option>` + currentMembers.map(m => `<option value="${m.id}" ${existing?.memberIds?.includes(m.id) ? 'selected' : ''}>${m.icon} ${m.nickname}</option>`).join('');
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const title = form.querySelector('[data-field="title"]').value.trim();
+    const date = form.querySelector('[data-field="date"]').value;
+    const time = form.querySelector('[data-field="time"]').value;
+    const memo = form.querySelector('[data-field="memo"]').value.trim();
+    const memberId = form.querySelector('[data-field="member"]').value;
+    if (!title || !date) return;
+    const data = { title, date, time, memo, memberIds: memberId ? [memberId] : [] };
+    if (existing) {
+      await updateSchedule(currentGroup.id, existing.id, data, currentUser.uid, getMemberNickname());
+    } else {
+      await addSchedule(currentGroup.id, data, currentUser.uid, getMemberNickname());
+    }
+    overlay.classList.remove('active');
+  };
+  overlay.classList.add('active');
+}
+
+// ===== Todo 등록 모달 =====
+function openTodoForm() {
+  const overlay = document.querySelector('[data-modal="todo-form"]');
+  const form = overlay.querySelector('[data-todo-form]');
+  form.querySelector('[data-field="title"]').value = '';
+  form.querySelector('[data-field="dueDate"]').value = '';
+
+  const memberSelect = form.querySelector('[data-field="assignee"]');
+  memberSelect.innerHTML = `<option value="">담당자 없음</option>` + currentMembers.map(m => `<option value="${m.id}">${m.icon} ${m.nickname}</option>`).join('');
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const title = form.querySelector('[data-field="title"]').value.trim();
+    const dueDate = form.querySelector('[data-field="dueDate"]').value;
+    const assigneeId = form.querySelector('[data-field="assignee"]').value;
+    if (!title) return;
+    await addTodo(currentGroup.id, { title, dueDate, assigneeId }, currentUser.uid, getMemberNickname());
+    overlay.classList.remove('active');
+  };
+  overlay.classList.add('active');
+}
+
+// ===== 그룹 로드 =====
+async function loadGroup(groupId, groupName, groupType) {
+  currentGroup = { id: groupId, name: groupName, type: groupType };
+  localStorage.setItem('lastGroupId', groupId);
+  localStorage.setItem('lastGroupName', groupName);
+  localStorage.setItem('lastGroupType', groupType);
+
+  currentMembers = await getGroupMembers(groupId);
+
+  document.querySelector('[data-group-name]').textContent = groupName;
+  const avatar = document.querySelector('[data-user-avatar]');
+  if (currentUser.photoURL) avatar.src = currentUser.photoURL;
+
+  // 리스너 정리
+  if (unsubSchedules) unsubSchedules();
+  if (unsubTodos) unsubTodos();
+  if (unsubActivities) unsubActivities();
+
+  unsubSchedules = listenSchedules(groupId, (items) => { allSchedules = items; renderScheduleList(); });
+  unsubTodos = listenTodos(groupId, (items) => { allTodos = items; renderTodoList(); });
+  unsubActivities = listenActivities(groupId, (items) => { renderFeed(items); });
+
+  showScreen('screen-home');
+  setTimeout(() => loadAISummary(), 500);
+}
+
+// ===== 탭 전환 =====
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.bottom-nav__item[data-tab]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  document.querySelectorAll('[data-tab-content]').forEach(el => {
+    el.style.display = el.dataset.tabContent === tab ? 'block' : 'none';
+  });
+  if (tab === 'home') renderMemberBar(), renderScheduleList(), renderTodoList();
+}
+
+// ===== 앱 초기화 =====
+function initApp() {
+  // 로그인 버튼
+  document.querySelector('[data-google-login]')?.addEventListener('click', async () => {
+    try { await signInWithGoogle(); } catch(e) { alert('로그인에 실패했어요. 다시 시도해주세요.'); }
+  });
+
+  // FAB
+  document.querySelector('[data-fab]')?.addEventListener('click', () => {
+    const overlay = document.querySelector('[data-modal="fab-menu"]');
+    overlay?.classList.toggle('active');
+  });
+  document.querySelector('[data-fab-schedule]')?.addEventListener('click', () => {
+    document.querySelector('[data-modal="fab-menu"]')?.classList.remove('active');
     openScheduleForm();
   });
-  document.getElementById('fab-todo')?.addEventListener('click', () => {
-    closeFabMenu();
+  document.querySelector('[data-fab-todo]')?.addEventListener('click', () => {
+    document.querySelector('[data-modal="fab-menu"]')?.classList.remove('active');
     openTodoForm();
   });
 
-  // Notification Bell
-  document.getElementById('notification-btn')?.addEventListener('click', openNotifications);
-
-  // Forms
-  document.getElementById('schedule-form')?.addEventListener('submit', handleScheduleFormSubmit);
-  document.getElementById('todo-form')?.addEventListener('submit', handleTodoFormSubmit);
-
-  // Todo Filter
-  document.querySelectorAll('.filter-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('filter-tab--active'));
-      tab.classList.add('filter-tab--active');
-      currentTodoFilter = tab.dataset.filter;
-      renderTodoList();
-    });
+  // 탭 네비
+  document.querySelectorAll('.bottom-nav__item[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
-  // Modal Close
+  // 모달 닫기
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('active'); });
+  });
   document.querySelectorAll('[data-modal-close]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const modal = e.target.closest('.modal');
-      closeModal(modal);
+    btn.addEventListener('click', () => btn.closest('.modal-overlay')?.classList.remove('active'));
+  });
+
+  // 그룹 생성/참여 탭
+  const groupTabBtns = document.querySelectorAll('[data-group-tab]');
+  groupTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      groupTabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('[data-group-panel]').forEach(p => p.style.display = 'none');
+      document.querySelector(`[data-group-panel="${btn.dataset.groupTab}"]`).style.display = 'block';
     });
   });
 
-  // Click outside modal
-  document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        closeModal(modal);
+  // 그룹 유형 선택
+  document.querySelectorAll('[data-type-btn]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-type-btn]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // 프로필 아이콘 선택
+  document.querySelectorAll('[data-icon-grid]').forEach(grid => {
+    grid.innerHTML = ICONS.map((icon, i) => `<div class="icon-option ${i===0?'active':''}" data-icon="${icon}">${icon}</div>`).join('');
+    grid.querySelectorAll('.icon-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        grid.querySelectorAll('.icon-option').forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+      });
+    });
+  });
+
+  // 그룹 만들기
+  document.querySelector('[data-create-group]')?.addEventListener('click', async () => {
+    const name = document.querySelector('[data-field="group-name"]').value.trim();
+    const nickname = document.querySelector('[data-field="create-nickname"]').value.trim();
+    const typeBtn = document.querySelector('[data-type-btn].active');
+    const iconEl = document.querySelector('[data-icon-grid="create"] .icon-option.active');
+    if (!name || !nickname) { alert('그룹명과 닉네임을 입력해주세요.'); return; }
+    const type = typeBtn ? typeBtn.dataset.typeBtn : 'family';
+    const icon = iconEl ? iconEl.dataset.icon : '😊';
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    try {
+      const groupId = await createGroup(name, type, currentUser.uid, nickname, icon, color);
+      await loadGroup(groupId, name, type);
+    } catch(e) { alert('그룹 생성에 실패했어요.'); }
+  });
+
+  // 그룹 참여
+  document.querySelector('[data-join-group]')?.addEventListener('click', async () => {
+    const code = document.querySelector('[data-field="invite-code"]').value.trim();
+    const nickname = document.querySelector('[data-field="join-nickname"]').value.trim();
+    const iconEl = document.querySelector('[data-icon-grid="join"] .icon-option.active');
+    if (!code || !nickname) { alert('초대 코드와 닉네임을 입력해주세요.'); return; }
+    const icon = iconEl ? iconEl.dataset.icon : '😊';
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    try {
+      const groupId = await joinGroupByCode(code, currentUser.uid, nickname, icon, color);
+      const groups = await getUserGroups(currentUser.uid);
+      const g = groups.find(g => g.id === groupId);
+      await loadGroup(groupId, g?.name || '그룹', g?.type || 'team');
+    } catch(e) { alert(e.message || '참여에 실패했어요.'); }
+  });
+
+  // AI 카드 클릭 새로고침
+  document.querySelector('[data-ai-card]')?.addEventListener('click', loadAISummary);
+
+  // 로그아웃
+  document.querySelector('[data-signout]')?.addEventListener('click', async () => {
+    if (confirm('로그아웃 할까요?')) {
+      localStorage.removeItem('lastGroupId');
+      await signOutUser();
+    }
+  });
+
+  // Auth 상태 감지
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      const savedGroupId = localStorage.getItem('lastGroupId');
+      const savedGroupName = localStorage.getItem('lastGroupName');
+      const savedGroupType = localStorage.getItem('lastGroupType');
+      if (savedGroupId) {
+        await loadGroup(savedGroupId, savedGroupName || '그룹', savedGroupType || 'team');
+      } else {
+        const groups = await getUserGroups(user.uid);
+        if (groups.length > 0) {
+          const g = groups[0];
+          await loadGroup(g.id, g.name, g.type);
+        } else {
+          showScreen('screen-group');
+          document.querySelector('[data-icon-grid="create"]') && initApp._iconsDone !== true && (() => {
+            initApp._iconsDone = true;
+          })();
+        }
       }
-    });
-  });
-};
-
-// ===== Login / Auth =====
-const handleLogin = async () => {
-  try {
-    const user = await signInWithGoogle();
-    currentUser = user;
-    await initializeApp();
-  } catch (error) {
-    alert('로그인 실패: ' + error.message);
-  }
-};
-
-const handleLogout = async () => {
-  try {
-    await signOut();
-    currentUser = null;
-    currentGroup = null;
-    if (scheduleUnsubscribe) scheduleUnsubscribe();
-    if (todoUnsubscribe) todoUnsubscribe();
-    showScreen('screen-login');
-    closeSidebar();
-  } catch (error) {
-    alert('로그아웃 실패: ' + error.message);
-  }
-};
-
-// ===== Sidebar Management =====
-const toggleSidebar = () => {
-  const sidebar = document.getElementById('sidebar-left');
-  const overlay = document.getElementById('sidebar-overlay');
-  sidebar.classList.toggle('active');
-  overlay.classList.toggle('active');
-};
-
-const closeSidebar = () => {
-  const sidebar = document.getElementById('sidebar-left');
-  const overlay = document.getElementById('sidebar-overlay');
-  sidebar.classList.remove('active');
-  overlay.classList.remove('active');
-};
-
-// ===== Dropdown Menu =====
-const toggleDropdownMenu = () => {
-  const menu = document.getElementById('dropdown-menu-right');
-  menu.classList.toggle('active');
-};
-
-const closeDropdownMenu = () => {
-  const menu = document.getElementById('dropdown-menu-right');
-  menu.classList.remove('active');
-};
-
-// ===== FAB Menu =====
-const toggleFabMenu = () => {
-  const menu = document.getElementById('fab-menu');
-  menu.classList.toggle('active');
-};
-
-const closeFabMenu = () => {
-  const menu = document.getElementById('fab-menu');
-  menu.classList.remove('active');
-};
-
-// ===== Group Management =====
-const loadGroupList = async () => {
-  const groupList = document.getElementById('group-list');
-  if (!groupList) return;
-
-  const groups = await getUserGroups(currentUser.uid);
-  if (groups.length === 0) {
-    groupList.innerHTML = '<div class="empty-state">그룹이 없습니다. 새로 만들어보세요!</div>';
-    return;
-  }
-
-  groupList.innerHTML = groups.map(group => `
-    <div class="group-item">
-      <div class="group-item__name">${group.name}</div>
-      <div class="group-item__info">${group.members.length}명 • ${new Date(group.createdAt.seconds * 1000).toLocaleDateString()}</div>
-      <button type="button" class="btn btn--sm btn--primary" style="margin-top: 8px;">진입</button>
-    </div>
-  `).join('');
-
-  document.querySelectorAll('.group-item').forEach((item, idx) => {
-    item.querySelector('button').addEventListener('click', () => {
-      selectGroup(groups[idx]);
-    });
-  });
-};
-
-const selectGroup = async (group) => {
-  currentGroup = group.id;
-  currentGroupData = group;
-  document.getElementById('header-group-name').textContent = group.name;
-
-  // Update sidebar group list
-  updateSidebarGroupList();
-
-  showScreen('screen-app');
-
-  members = await getGroupMembers(currentGroup);
-
-  if (scheduleUnsubscribe) scheduleUnsubscribe();
-  if (todoUnsubscribe) todoUnsubscribe();
-
-  scheduleUnsubscribe = listenSchedules(currentGroup, (data) => {
-    schedules = data;
-    renderScheduleList();
-    renderTodaySection();
-  });
-
-  todoUnsubscribe = listenTodos(currentGroup, (data) => {
-    todos = data;
-    renderTodoList();
-    renderTodaySection();
-    loadAISummary();
-  });
-
-  renderMemberBar();
-  loadAISummary();
-  closeSidebar();
-};
-
-const updateSidebarGroupList = async () => {
-  const groups = await getUserGroups(currentUser.uid);
-  const groupSelectList = document.getElementById('group-select-list');
-
-  groupSelectList.innerHTML = groups.map(group => `
-    <div class="group-select-item ${group.id === currentGroup ? 'active' : ''}" data-group-id="${group.id}">
-      ${group.name}
-    </div>
-  `).join('');
-
-  document.querySelectorAll('.group-select-item').forEach(item => {
-    item.addEventListener('click', async () => {
-      const groupId = item.dataset.groupId;
-      const selectedGroup = groups.find(g => g.id === groupId);
-      await selectGroup(selectedGroup);
-    });
-  });
-};
-
-const openCreateGroupForm = () => {
-  const groupName = prompt('그룹 이름을 입력하세요:');
-  if (groupName) {
-    createGroup(currentUser.uid, groupName).then(group => {
-      selectGroup(group);
-    }).catch(error => alert('그룹 생성 실패: ' + error.message));
-  }
-};
-
-const openJoinGroupForm = () => {
-  const inviteCode = prompt('초대 코드를 입력하세요:');
-  if (inviteCode) {
-    joinGroup(currentUser.uid, inviteCode).then(group => {
-      selectGroup(group);
-    }).catch(error => alert('그룹 참여 실패: ' + error.message));
-  }
-};
-
-const openGroupSettings = () => {
-  alert('그룹 설정 기능은 준비 중입니다');
-  closeDropdownMenu();
-};
-
-const openInviteModal = () => {
-  const inviteCode = currentGroupData?.inviteCode || 'CODE123';
-  alert(`초대 코드: ${inviteCode}\n\n이 코드를 복사해서 공유하세요!`);
-  closeDropdownMenu();
-};
-
-const leaveGroup = () => {
-  if (confirm('정말 이 그룹에서 나가시겠어요?')) {
-    alert('그룹 나가기 기능은 준비 중입니다');
-    closeDropdownMenu();
-  }
-};
-
-// ===== Tab Management =====
-const switchTab = (tabName) => {
-  activeTab = tabName;
-
-  document.querySelectorAll('.app-tabs__tab').forEach(tab => {
-    tab.classList.toggle('app-tabs__tab--active', tab.dataset.tab === tabName);
-  });
-
-  document.querySelectorAll('.app-tab-content').forEach(content => {
-    content.classList.toggle('app-tab-content--active', content.dataset.tabContent === tabName);
-  });
-
-  if (tabName === 'schedule') {
-    renderScheduleList();
-  } else if (tabName === 'todo') {
-    renderTodoList();
-  } else if (tabName === 'home') {
-    renderTodaySection();
-    loadAISummary();
-  }
-};
-
-// ===== AI Summary =====
-const loadAISummary = async () => {
-  const summaryCard = document.getElementById('summary-card');
-  if (!summaryCard) return;
-
-  summaryCard.innerHTML = '<div class="spinner"></div><p>요약을 불러오는 중...</p>';
-
-  try {
-    const summary = await getAISummary(schedules, todos, members);
-    summaryCard.innerHTML = `<p>${summary.replace(/\n/g, '<br>')}</p>`;
-  } catch (error) {
-    summaryCard.innerHTML = `<p>${error.message}</p>`;
-  }
-};
-
-// ===== Home Screen Sections =====
-const renderTodaySection = () => {
-  const todaySection = document.getElementById('today-section');
-  if (!todaySection) return;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const todaySchedules = schedules.filter(s => {
-    const startDate = new Date(s.startDate);
-    const endDate = new Date(s.endDate);
-    return startDate <= today && endDate >= today;
-  });
-
-  const todayTodos = todos.filter(t => {
-    const dueDate = new Date(t.dueDate);
-    return !t.completed && dueDate.toDateString() === today.toDateString();
-  });
-
-  if (todaySchedules.length === 0 && todayTodos.length === 0) {
-    todaySection.innerHTML = '<div class="empty-state">오늘의 일정과 할일이 없습니다</div>';
-    return;
-  }
-
-  let html = '';
-
-  todaySchedules.forEach(s => {
-    html += `
-      <div class="today-card">
-        <div class="today-card-title">📅 ${s.title}</div>
-        <div class="today-card-time">${s.startTime} ~ ${s.endTime}</div>
-        <div class="today-card-time">담당: ${s.member}</div>
-      </div>
-    `;
-  });
-
-  todayTodos.forEach(t => {
-    html += `
-      <div class="today-card">
-        <div class="today-card-title">✓ ${t.title}</div>
-        <div class="today-card-time">마감: ${t.endTime}</div>
-        <div class="today-card-time">담당: ${t.member}</div>
-      </div>
-    `;
-  });
-
-  todaySection.innerHTML = html;
-};
-
-const renderActivityFeed = () => {
-  const activityFeed = document.getElementById('activity-feed');
-  if (!activityFeed) return;
-
-  if (schedules.length === 0 && todos.length === 0) {
-    activityFeed.innerHTML = '<div class="empty-state">아직 활동이 없습니다</div>';
-    return;
-  }
-
-  const recentItems = [
-    ...schedules.map(s => ({ type: 'schedule', ...s, createdAt: s.createdAt })),
-    ...todos.map(t => ({ type: 'todo', ...t, createdAt: t.createdAt }))
-  ].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5);
-
-  activityFeed.innerHTML = recentItems.map(item => {
-    const date = new Date((item.createdAt?.seconds || 0) * 1000);
-    const timeAgo = getTimeAgo(date);
-
-    if (item.type === 'schedule') {
-      return `
-        <div class="activity-card">
-          <div class="activity-title">🆕 [${item.member}]이 일정을 추가했습니다</div>
-          <div class="activity-time">${item.title} • ${timeAgo}</div>
-          <button type="button" class="activity-action">확인하기</button>
-        </div>
-      `;
     } else {
-      return `
-        <div class="activity-card">
-          <div class="activity-title">🆕 [${item.member}]이 할일을 추가했습니다</div>
-          <div class="activity-time">${item.title} • ${timeAgo}</div>
-          <button type="button" class="activity-action">확인하기</button>
-        </div>
-      `;
+      currentUser = null;
+      currentGroup = null;
+      showScreen('screen-login');
     }
-  }).join('');
-};
-
-const getTimeAgo = (date) => {
-  const now = new Date();
-  const diff = Math.floor((now - date) / 1000);
-
-  if (diff < 60) return '방금 전';
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  return `${Math.floor(diff / 86400)}일 전`;
-};
-
-// ===== Schedule Management =====
-const openScheduleForm = (scheduleId = null) => {
-  editingScheduleId = scheduleId;
-  const modal = document.getElementById('modal-schedule-form');
-  const form = document.getElementById('schedule-form');
-
-  if (scheduleId) {
-    const schedule = schedules.find(s => s.id === scheduleId);
-    document.getElementById('schedule-title').value = schedule.title;
-    document.getElementById('schedule-start-date').value = schedule.startDate;
-    document.getElementById('schedule-end-date').value = schedule.endDate;
-    document.getElementById('schedule-start-time').value = schedule.startTime || '';
-    document.getElementById('schedule-end-time').value = schedule.endTime || '';
-    modal.querySelector('.modal-title').textContent = '일정 수정';
-  } else {
-    form.reset();
-    modal.querySelector('.modal-title').textContent = '일정 추가';
-  }
-
-  openModal(modal);
-};
-
-const handleScheduleFormSubmit = async (e) => {
-  e.preventDefault();
-
-  const title = document.getElementById('schedule-title').value;
-  const startDate = document.getElementById('schedule-start-date').value;
-  const endDate = document.getElementById('schedule-end-date').value;
-  const startTime = document.getElementById('schedule-start-time').value;
-  const endTime = document.getElementById('schedule-end-time').value;
-
-  if (new Date(endDate) < new Date(startDate)) {
-    alert('종료 날짜가 시작 날짜보다 이전일 수 없습니다.');
-    return;
-  }
-
-  const scheduleData = {
-    title,
-    startDate,
-    endDate,
-    startTime: startTime || '00:00',
-    endTime: endTime || '23:59',
-    member: currentUser.displayName
-  };
-
-  try {
-    if (editingScheduleId) {
-      await updateSchedule(currentGroup, editingScheduleId, scheduleData);
-    } else {
-      await addSchedule(currentGroup, scheduleData);
-    }
-    closeModal(document.getElementById('modal-schedule-form'));
-  } catch (error) {
-    alert('일정 저장 실패: ' + error.message);
-  }
-};
-
-const renderScheduleList = () => {
-  const listContainer = document.querySelector('.schedule-list');
-  if (!listContainer) return;
-
-  if (schedules.length === 0) {
-    listContainer.innerHTML = '<div class="empty-state">📅 일정이 없습니다</div>';
-    return;
-  }
-
-  listContainer.innerHTML = schedules.map(schedule => `
-    <div class="schedule-item" data-schedule-id="${schedule.id}">
-      <div class="schedule-item__title">${schedule.title}</div>
-      <div class="schedule-item__date">${schedule.startDate} ~ ${schedule.endDate}</div>
-      <div class="schedule-item__member">담당: ${schedule.member}</div>
-    </div>
-  `).join('');
-};
-
-// ===== Todo Management =====
-const openTodoForm = (todoId = null) => {
-  editingTodoId = todoId;
-  const modal = document.getElementById('modal-todo-form');
-  const form = document.getElementById('todo-form');
-
-  if (todoId) {
-    const todo = todos.find(t => t.id === todoId);
-    document.getElementById('todo-title').value = todo.title;
-    document.getElementById('todo-start-date').value = todo.startDate || '';
-    document.getElementById('todo-due-date').value = todo.dueDate;
-    document.getElementById('todo-start-time').value = todo.startTime || '';
-    document.getElementById('todo-end-time').value = todo.endTime || '';
-    modal.querySelector('.modal-title').textContent = '할일 수정';
-  } else {
-    form.reset();
-    modal.querySelector('.modal-title').textContent = '할일 추가';
-  }
-
-  openModal(modal);
-};
-
-const handleTodoFormSubmit = async (e) => {
-  e.preventDefault();
-
-  const title = document.getElementById('todo-title').value;
-  const startDate = document.getElementById('todo-start-date').value;
-  const dueDate = document.getElementById('todo-due-date').value;
-  const startTime = document.getElementById('todo-start-time').value;
-  const endTime = document.getElementById('todo-end-time').value;
-
-  const todoData = {
-    title,
-    startDate: startDate || dueDate,
-    dueDate,
-    startTime: startTime || '00:00',
-    endTime: endTime || '23:59',
-    member: currentUser.displayName
-  };
-
-  try {
-    if (editingTodoId) {
-      await updateTodo(currentGroup, editingTodoId, todoData);
-    } else {
-      await addTodo(currentGroup, todoData);
-    }
-    closeModal(document.getElementById('modal-todo-form'));
-  } catch (error) {
-    alert('할일 저장 실패: ' + error.message);
-  }
-};
-
-const renderTodoList = () => {
-  const listContainer = document.querySelector('.todo-list');
-  if (!listContainer) return;
-
-  let filteredTodos = todos;
-
-  if (currentTodoFilter === 'pending') {
-    filteredTodos = todos.filter(t => !t.completed);
-  } else if (currentTodoFilter === 'completed') {
-    filteredTodos = todos.filter(t => t.completed);
-  }
-
-  if (filteredTodos.length === 0) {
-    listContainer.innerHTML = '<div class="empty-state">✓ 할일이 없습니다</div>';
-    return;
-  }
-
-  listContainer.innerHTML = filteredTodos.map(todo => {
-    const dueDate = new Date(todo.dueDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const isUrgent = dueDate <= today && !todo.completed;
-
-    return `
-      <div class="todo-item ${isUrgent ? 'todo-item--urgent' : ''}">
-        <div class="todo-item__header">
-          <input type="checkbox" class="todo-item__checkbox" ${todo.completed ? 'checked' : ''}>
-          <div class="todo-item__title">${todo.title}</div>
-          ${isUrgent ? '<span class="todo-item__priority">긴급</span>' : ''}
-        </div>
-        <div class="todo-item__meta">마감: ${todo.dueDate} ${todo.endTime}</div>
-        <div class="todo-item__member">담당: ${todo.member}</div>
-      </div>
-    `;
-  }).join('');
-};
-
-// ===== Member Bar =====
-const renderMemberBar = () => {
-  const memberBar = document.getElementById('member-bar');
-  if (!memberBar) return;
-
-  const colors = ['orange', 'yellow', 'green', 'blue'];
-  memberBar.innerHTML = members.map((member, index) => {
-    const initials = member.name.substring(0, 2).toUpperCase();
-    const colorClass = colors[index % colors.length];
-    return `<div class="member-item member-item--${colorClass}" title="${member.name}">${initials}</div>`;
-  }).join('');
-};
-
-// ===== Notifications =====
-const openNotifications = () => {
-  const modal = document.getElementById('modal-notifications');
-  openModal(modal);
-};
-
-// ===== Modal Management =====
-const openModal = (modal) => {
-  modal.classList.add('modal--active');
-  document.body.style.overflow = 'hidden';
-};
-
-const closeModal = (modal) => {
-  modal.classList.remove('modal--active');
-  document.body.style.overflow = '';
-};
-
-// ===== Other Functions =====
-const openSettings = () => {
-  alert('설정 기능은 준비 중입니다');
-  closeSidebar();
-};
-
-// Export for testing
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    initializeApp,
-    showScreen,
-    switchTab,
-    loadAISummary,
-    openScheduleForm,
-    openTodoForm,
-    renderScheduleList,
-    renderTodoList,
-    renderMemberBar
-  };
+    hideLoading();
+  });
 }
+
+document.addEventListener('DOMContentLoaded', initApp);
