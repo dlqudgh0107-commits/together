@@ -128,11 +128,14 @@
 
     <!-- 헤더 -->
     <div class="app-header">
-      <div class="app-header__group">
+      <div class="app-header__group" data-group-switch style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
         <span class="app-header__group-name" data-group-name>그룹명</span>
         <span class="app-header__group-arrow">▾</span>
       </div>
       <div class="app-header__actions">
+        <div class="app-header__btn" data-add-group title="그룹 추가/변경" style="cursor: pointer;">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
         <div class="app-header__btn" data-signout title="로그아웃">
           <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </div>

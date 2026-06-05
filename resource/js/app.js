@@ -545,6 +545,14 @@ function initApp() {
   // AI 카드 클릭 새로고침
   document.querySelector('[data-ai-card]')?.addEventListener('click', loadAISummary);
 
+  // 그룹 변경/추가
+  document.querySelector('[data-group-switch]')?.addEventListener('click', () => {
+    showScreen('screen-group');
+  });
+  document.querySelector('[data-add-group]')?.addEventListener('click', () => {
+    showScreen('screen-group');
+  });
+
   // 로그아웃
   document.querySelector('[data-signout]')?.addEventListener('click', async () => {
     if (confirm('로그아웃 할까요?')) {
