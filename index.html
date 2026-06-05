@@ -74,6 +74,7 @@
 
     <div class="group-tab">
       <button class="group-tab__btn active" data-group-tab="create">그룹 만들기</button>
+      <button class="group-tab__btn" data-group-tab="invite">초대하기</button>
       <button class="group-tab__btn" data-group-tab="join">참여하기</button>
     </div>
 
@@ -103,6 +104,23 @@
         <div class="icon-grid" data-icon-grid="create"></div>
       </div>
       <button class="btn-primary" data-create-group>그룹 만들기</button>
+    </div>
+
+    <!-- 초대 패널 -->
+    <div data-group-panel="invite" style="display:none">
+      <div style="background: #f5f5f5; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
+        <div style="font-size: 12px; color: #00000073; margin-bottom: 8px;">초대 코드</div>
+        <div style="font-size: 32px; font-weight: 700; letter-spacing: 4px; margin-bottom: 16px; font-family: 'Courier New', monospace;" data-invite-code>ABC123</div>
+        <button class="btn-primary" data-copy-invite style="background: #1677ff; width: 100%;">코드 복사</button>
+      </div>
+      <div style="background: #fff1f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <div style="font-size: 12px; color: #ff4d4f; font-weight: 600; margin-bottom: 8px;">📍 초대 방법</div>
+        <div style="font-size: 13px; color: #ff4d4f; line-height: 1.6;">
+          1. 위의 초대 코드를 복사해주세요<br>
+          2. 가족/팀원에게 아래 링크와 코드를 공유<br>
+          <strong style="display: block; margin-top: 8px;">https://together-app-6cabd.web.app</strong>
+        </div>
+      </div>
     </div>
 
     <!-- 참여 패널 -->

@@ -480,15 +480,29 @@ function initApp() {
     btn.addEventListener('click', () => btn.closest('.modal-overlay')?.classList.remove('active'));
   });
 
-  // 그룹 생성/참여 탭
+  // 그룹 생성/참여/초대 탭
   const groupTabBtns = document.querySelectorAll('[data-group-tab]');
   groupTabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       groupTabBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       document.querySelectorAll('[data-group-panel]').forEach(p => p.style.display = 'none');
-      document.querySelector(`[data-group-panel="${btn.dataset.groupTab}"]`).style.display = 'block';
+      const panel = document.querySelector(`[data-group-panel="${btn.dataset.groupTab}"]`);
+      if (panel) panel.style.display = 'block';
     });
+  });
+
+  // 초대 코드 복사
+  document.querySelector('[data-copy-invite]')?.addEventListener('click', async () => {
+    const codeEl = document.querySelector('[data-invite-code]');
+    const code = codeEl?.textContent || '';
+    if (code) {
+      await navigator.clipboard.writeText(code);
+      const btn = document.querySelector('[data-copy-invite]');
+      const originalText = btn.textContent;
+      btn.textContent = '✓ 복사됨!';
+      setTimeout(() => { btn.textContent = originalText; }, 2000);
+    }
   });
 
   // 그룹 유형 선택
@@ -546,12 +560,25 @@ function initApp() {
   document.querySelector('[data-ai-card]')?.addEventListener('click', loadAISummary);
 
   // 그룹 변경/추가
-  document.querySelector('[data-group-switch]')?.addEventListener('click', () => {
+  const showGroupScreen = () => {
     showScreen('screen-group');
-  });
-  document.querySelector('[data-add-group]')?.addEventListener('click', () => {
-    showScreen('screen-group');
-  });
+    // 현재 그룹이 있으면 초대 코드 표시
+    if (currentGroup && currentGroup.id) {
+      setTimeout(() => {
+        document.querySelector('[data-invite-code]').textContent = currentGroup.inviteCode || 'N/A';
+        const inviteBtn = document.querySelector('[data-group-tab="invite"]');
+        const createBtn = document.querySelector('[data-group-tab="create"]');
+        if (inviteBtn) {
+          inviteBtn.style.display = 'block';
+          inviteBtn.click(); // 초대 탭으로 자동 전환
+        }
+        if (createBtn) createBtn.style.display = 'none';
+      }, 0);
+    }
+  };
+
+  document.querySelector('[data-group-switch]')?.addEventListener('click', showGroupScreen);
+  document.querySelector('[data-add-group]')?.addEventListener('click', showGroupScreen);
 
   // 로그아웃
   document.querySelector('[data-signout]')?.addEventListener('click', async () => {
