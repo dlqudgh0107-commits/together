@@ -1,7 +1,7 @@
 import {
   auth, onAuthStateChanged,
   signInWithGoogle, signOutUser,
-  createGroup, joinGroupByCode, getUserGroups, getGroupMembers,
+  createGroup, joinGroupByCode, getUserGroups, getGroupData, getGroupMembers,
   addSchedule, updateSchedule, deleteSchedule, listenSchedules,
   addTodo, updateTodo, deleteTodo, toggleTodo, listenTodos,
   listenActivities
@@ -410,7 +410,12 @@ function openTodoForm(existing = null) {
 
 // ===== 그룹 로드 =====
 async function loadGroup(groupId, groupName, groupType) {
-  currentGroup = { id: groupId, name: groupName, type: groupType };
+  try {
+    const groupData = await getGroupData(groupId);
+    currentGroup = { id: groupId, name: groupName, type: groupType, inviteCode: groupData.inviteCode };
+  } catch (err) {
+    currentGroup = { id: groupId, name: groupName, type: groupType, inviteCode: 'N/A' };
+  }
   localStorage.setItem('lastGroupId', groupId);
   localStorage.setItem('lastGroupName', groupName);
   localStorage.setItem('lastGroupType', groupType);
@@ -564,16 +569,7 @@ function initApp() {
     showScreen('screen-group');
     // 현재 그룹이 있으면 초대 코드 표시
     if (currentGroup && currentGroup.id) {
-      setTimeout(() => {
-        document.querySelector('[data-invite-code]').textContent = currentGroup.inviteCode || 'N/A';
-        const inviteBtn = document.querySelector('[data-group-tab="invite"]');
-        const createBtn = document.querySelector('[data-group-tab="create"]');
-        if (inviteBtn) {
-          inviteBtn.style.display = 'block';
-          inviteBtn.click(); // 초대 탭으로 자동 전환
-        }
-        if (createBtn) createBtn.style.display = 'none';
-      }, 0);
+      document.querySelector('[data-invite-code]').textContent = currentGroup.inviteCode || 'N/A';
     }
   };
 

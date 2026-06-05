@@ -67,6 +67,12 @@ async function getUserGroups(userId) {
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+async function getGroupData(groupId) {
+  const groupDoc = await getDoc(doc(db, 'groups', groupId));
+  if (!groupDoc.exists()) throw new Error('그룹을 찾을 수 없어요.');
+  return { id: groupDoc.id, ...groupDoc.data() };
+}
+
 async function getGroupMembers(groupId) {
   const snapshot = await getDocs(collection(db, 'groups', groupId, 'members'));
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -152,7 +158,7 @@ function listenActivities(groupId, callback) {
 export {
   auth, db, onAuthStateChanged,
   signInWithGoogle, signOutUser,
-  createGroup, joinGroupByCode, getUserGroups, getGroupMembers,
+  createGroup, joinGroupByCode, getUserGroups, getGroupData, getGroupMembers,
   addSchedule, updateSchedule, deleteSchedule, listenSchedules,
   addTodo, updateTodo, deleteTodo, toggleTodo, listenTodos,
   addActivity, listenActivities
