@@ -92,8 +92,8 @@ function renderMemberBar() {
 
 // ===== 일정 리스트 렌더 =====
 function renderScheduleList() {
-  const container = document.querySelector('[data-schedule-list]');
-  if (!container) return;
+  const containers = document.querySelectorAll('[data-schedule-list]');
+  if (containers.length === 0) return;
 
   const filtered = allSchedules.filter(s => {
     const startDate = s.startDate || s.date;
@@ -102,89 +102,89 @@ function renderScheduleList() {
     return true;
   });
 
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state">등록된 일정이 없어요 🗓</div>';
-    return;
-  }
-
-  // 날짜별 그룹핑 (시작 날짜 기준)
-  const grouped = {};
-  filtered.forEach(s => {
-    const startDate = s.startDate || s.date;
-    if (!grouped[startDate]) grouped[startDate] = [];
-    grouped[startDate].push(s);
-  });
-
-  container.innerHTML = Object.keys(grouped).sort().map(date => `
-    <div class="date-label">
-      ${formatDate(date)}
-      ${isToday(date) ? '<span class="date-label__today">오늘</span>' : ''}
-    </div>
-    ${grouped[date].map(s => {
-      const member = currentMembers.find(m => (s.memberIds||[]).includes(m.id));
-      const color = member ? member.color : '#1677ff';
-      const startDate = s.startDate || s.date;
-      const endDate = s.endDate;
-      const dateRange = startDate === endDate ? '' : ` ~ ${formatDate(endDate)}`;
-      const timeDisplay = s.startTime && s.endTime ? `${s.startTime} ~ ${s.endTime}` : s.startTime ? s.startTime : '';
-      return `
-        <div class="schedule-card" data-schedule-id="${s.id}" style="margin: 0 20px 8px;">
-          <div class="schedule-card__dot" style="background:${color}"></div>
-          <div class="schedule-card__body">
-            <div class="schedule-card__title">${s.title}</div>
-            <div class="schedule-card__meta">
-              ${timeDisplay ? `<span>🕐 ${timeDisplay}</span>` : ''}
-              ${member ? `<span class="schedule-card__member">
-                <span class="schedule-card__member-dot" style="background:${member.color}20">${member.icon}</span>
-                ${member.nickname}
-              </span>` : '<span>전체</span>'}
-            </div>
-          </div>
-          <span class="schedule-card__arrow">›</span>
+  const html = filtered.length === 0
+    ? '<div class="empty-state">등록된 일정이 없어요 🗓</div>'
+    : (() => {
+      const grouped = {};
+      filtered.forEach(s => {
+        const startDate = s.startDate || s.date;
+        if (!grouped[startDate]) grouped[startDate] = [];
+        grouped[startDate].push(s);
+      });
+      return Object.keys(grouped).sort().map(date => `
+        <div class="date-label">
+          ${formatDate(date)}
+          ${isToday(date) ? '<span class="date-label__today">오늘</span>' : ''}
         </div>
-      `;
-    }).join('')}
-  `).join('');
+        ${grouped[date].map(s => {
+          const member = currentMembers.find(m => (s.memberIds||[]).includes(m.id));
+          const color = member ? member.color : '#1677ff';
+          const startDate = s.startDate || s.date;
+          const endDate = s.endDate;
+          const dateRange = startDate === endDate ? '' : ` ~ ${formatDate(endDate)}`;
+          const timeDisplay = s.startTime && s.endTime ? `${s.startTime} ~ ${s.endTime}` : s.startTime ? s.startTime : '';
+          return `
+            <div class="schedule-card" data-schedule-id="${s.id}" style="margin: 0 20px 8px;">
+              <div class="schedule-card__dot" style="background:${color}"></div>
+              <div class="schedule-card__body">
+                <div class="schedule-card__title">${s.title}</div>
+                <div class="schedule-card__meta">
+                  ${timeDisplay ? `<span>🕐 ${timeDisplay}</span>` : ''}
+                  ${member ? `<span class="schedule-card__member">
+                    <span class="schedule-card__member-dot" style="background:${member.color}20">${member.icon}</span>
+                    ${member.nickname}
+                  </span>` : '<span>전체</span>'}
+                </div>
+              </div>
+              <span class="schedule-card__arrow">›</span>
+            </div>
+          `;
+        }).join('')}
+      `).join('');
+    })();
 
-  container.querySelectorAll('.schedule-card').forEach(card => {
-    card.addEventListener('click', () => openScheduleDetail(card.dataset.scheduleId));
+  containers.forEach(container => {
+    container.innerHTML = html;
+    container.querySelectorAll('.schedule-card').forEach(card => {
+      card.addEventListener('click', () => openScheduleDetail(card.dataset.scheduleId));
+    });
   });
 }
 
 // ===== Todo 렌더 =====
 function renderTodoList() {
-  const container = document.querySelector('[data-todo-list]');
-  if (!container) return;
+  const containers = document.querySelectorAll('[data-todo-list]');
+  if (containers.length === 0) return;
 
   const filtered = filterMemberId === 'all'
     ? allTodos
     : allTodos.filter(t => t.assigneeId === filterMemberId);
 
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state">할 일이 없어요 ✅</div>';
-    return;
-  }
-
-  container.innerHTML = filtered.map(t => {
-    const member = currentMembers.find(m => m.id === t.assigneeId);
-    const isDone = t.status === 'done';
-    return `
-      <div class="todo-card" data-todo-id="${t.id}" data-status="${t.status}" data-title="${t.title}" style="margin: 0 20px 8px;">
-        <div class="todo-card__check ${isDone ? 'done' : ''}"></div>
-        <div class="todo-card__body">
-          <div class="todo-card__title ${isDone ? 'done' : ''}">${t.title}</div>
-          <div class="todo-card__assignee">
-            ${member ? `${member.icon} ${member.nickname}` : '담당자 없음'}
-            ${t.dueDate ? ` · <span class="todo-card__due">D-${Math.max(0, Math.ceil((new Date(t.dueDate) - new Date()) / 86400000))}</span>` : ''}
+  const html = filtered.length === 0
+    ? '<div class="empty-state">할 일이 없어요 ✅</div>'
+    : filtered.map(t => {
+      const member = currentMembers.find(m => m.id === t.assigneeId);
+      const isDone = t.status === 'done';
+      return `
+        <div class="todo-card" data-todo-id="${t.id}" data-status="${t.status}" data-title="${t.title}" style="margin: 0 20px 8px;">
+          <div class="todo-card__check ${isDone ? 'done' : ''}"></div>
+          <div class="todo-card__body">
+            <div class="todo-card__title ${isDone ? 'done' : ''}">${t.title}</div>
+            <div class="todo-card__assignee">
+              ${member ? `${member.icon} ${member.nickname}` : '담당자 없음'}
+              ${t.dueDate ? ` · <span class="todo-card__due">D-${Math.max(0, Math.ceil((new Date(t.dueDate) - new Date()) / 86400000))}</span>` : ''}
+            </div>
           </div>
         </div>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('');
 
-  container.querySelectorAll('.todo-card').forEach(card => {
-    card.addEventListener('click', () => {
-      toggleTodo(currentGroup.id, card.dataset.todoId, card.dataset.status, card.dataset.title, currentUser.uid, getMemberNickname());
+  containers.forEach(container => {
+    container.innerHTML = html;
+    container.querySelectorAll('.todo-card').forEach(card => {
+      card.addEventListener('click', () => {
+        toggleTodo(currentGroup.id, card.dataset.todoId, card.dataset.status, card.dataset.title, currentUser.uid, getMemberNickname());
+      });
     });
   });
 }
