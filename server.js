@@ -26,7 +26,9 @@ app.get('/health', (req, res) => {
 // POST /api/ai-summary - AI 요약 생성
 app.post('/api/ai-summary', async (req, res) => {
   try {
+    console.log('[AI 요약] 요청 수신');
     const { schedules, todos, members } = req.body;
+    console.log('[AI 요약] 데이터:', { schedules: schedules?.length || 0, todos: todos?.length || 0, members: members?.length || 0 });
 
     // 향후 일정과 미완료 할일만 필터링
     const today = new Date();
@@ -83,6 +85,7 @@ ${todoText}
 
 간결하고 유용한 요약을 한국어로 작성해주세요. 마감이 임박한 것이 있으면 먼저 언급해주세요.`;
 
+    console.log('[AI 요약] Claude API 호출 중...');
     const message = await client.messages.create({
       model: 'claude-opus-4-7-20250219',
       max_tokens: 1024,
@@ -95,10 +98,11 @@ ${todoText}
     });
 
     const summary = message.content[0].type === 'text' ? message.content[0].text : '';
+    console.log('[AI 요약] 완료:', summary.substring(0, 50) + '...');
 
     res.json({ summary });
   } catch (error) {
-    console.error('Error:', error);
+    console.error('[AI 요약 에러]', error.message, error.status, error.error);
     res.status(500).json({
       error: '요약을 생성하지 못했습니다.',
       details: error.message,
