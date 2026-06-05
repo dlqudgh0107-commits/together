@@ -597,11 +597,20 @@ function initApp() {
   // 그룹 변경/추가
   const showGroupScreen = () => {
     showScreen('screen-group');
-    // 현재 그룹이 있으면 초대 코드 표시
+    const backBtn = document.querySelector('[data-back-to-home]');
+    // 현재 그룹이 있으면 초대 코드 표시 + 돌아가기 버튼 표시
     if (currentGroup && currentGroup.id) {
       document.querySelector('[data-invite-code]').textContent = currentGroup.inviteCode || 'N/A';
+      backBtn.style.display = 'block';
+    } else {
+      backBtn.style.display = 'none';
     }
   };
+
+  // 시작하기 화면 돌아가기 버튼
+  document.querySelector('[data-back-to-home]')?.addEventListener('click', () => {
+    showScreen('screen-home');
+  });
 
   document.querySelector('[data-group-switch]')?.addEventListener('click', showGroupListModal);
   document.querySelector('[data-add-group]')?.addEventListener('click', showGroupScreen);
