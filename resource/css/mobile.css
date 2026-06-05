@@ -1,0 +1,84 @@
+/* ===== Mobile Styles (max-width: 767px) ===== */
+@media (max-width: 767px) {
+  /* ===== Font Sizes ===== */
+  body {font-size: 14px;}
+  h1 {font-size: 24px;}
+  h2 {font-size: 20px;}
+  h3 {font-size: 18px;}
+
+  /* ===== Login Screen ===== */
+  .login-container {padding: 16px;}
+  .login-card {padding: 32px 20px;}
+  .login-title {font-size: 28px; margin-bottom: 12px;}
+  .login-subtitle {font-size: 13px; margin-bottom: 24px;}
+
+  /* ===== App Header ===== */
+  .app-header {grid-template-columns: 1fr auto; padding: 12px 16px; height: 56px;}
+  .app-header__center {display: none;}
+  .app-header__title {font-size: 18px;}
+  .app-header__right {flex: 1; justify-content: flex-end;}
+
+  /* ===== App Tabs ===== */
+  .app-tabs__tab {font-size: 12px; padding: 10px 8px;}
+
+  /* ===== Main Content ===== */
+  .app-main {padding: 16px;}
+
+  .section-title {font-size: 16px; margin-bottom: 12px;}
+
+  .section-header {margin-bottom: 12px;}
+
+  .home-section {margin-bottom: 24px;}
+
+  /* ===== Summary Card ===== */
+  .summary-card {padding: 16px; min-height: 100px;}
+
+  /* ===== Member Bar ===== */
+  .member-bar {gap: 8px;}
+  .member-item {width: 40px; height: 40px; font-size: 12px;}
+
+  /* ===== Schedule/Todo Items ===== */
+  .schedule-item, .todo-item {padding: 10px; border-left-width: 3px;}
+  .schedule-item__title, .todo-item__title {font-size: 13px; margin-bottom: 3px;}
+  .schedule-item__date, .todo-item__date {font-size: 11px;}
+
+  /* ===== Buttons ===== */
+  .btn {padding: 8px 12px; font-size: 13px;}
+  .btn--lg {padding: 10px 16px; font-size: 14px;}
+
+  /* ===== Forms ===== */
+  .form-row {grid-template-columns: 1fr 1fr; gap: 8px;}
+  .form-label {font-size: 13px;}
+  .form-input {padding: 8px 10px; font-size: 13px;}
+  .form-textarea {min-height: 80px;}
+
+  /* ===== Modal ===== */
+  .modal-content {width: 95%; max-height: 95vh; padding: 20px;}
+  .modal-title {font-size: 18px;}
+
+  .detail-row {padding: 6px 0;}
+  .detail-label {font-size: 11px;}
+  .detail-value {font-size: 13px;}
+
+  /* ===== Invite Card ===== */
+  .invite-code {font-size: 13px; padding: 6px 10px;}
+  .invite-description {font-size: 11px;}
+
+  /* ===== Form Actions ===== */
+  .form-actions {flex-direction: column;}
+  .form-actions .btn {width: 100%;}
+
+  /* ===== Empty State ===== */
+  .empty-state {padding: 30px 16px;}
+  .empty-state__icon {font-size: 40px;}
+  .empty-state__text {font-size: 13px;}
+
+  /* ===== Toast ===== */
+  .toast {bottom: 16px; right: 16px; left: 16px; font-size: 13px; padding: 10px 14px;}
+
+  /* ===== Group Selection ===== */
+  .group-container {padding: 24px 16px;}
+  .group-title {font-size: 22px; margin-bottom: 24px;}
+  .group-item {padding: 12px;}
+  .group-item__name {font-size: 14px;}
+}

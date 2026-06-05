@@ -1,0 +1,21 @@
+/* Google Fonts - Pretendard */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+
+body {font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; font-size: 16px; line-height: 1.5; color: #000000e0; font-weight: 400;}
+
+h1, h2, h3, h4, h5, h6 {font-weight: 600; line-height: 1.3;}
+h1 {font-size: 32px;}
+h2 {font-size: 24px;}
+h3 {font-size: 20px;}
+h4 {font-size: 18px;}
+h5 {font-size: 16px;}
+h6 {font-size: 14px;}
+
+strong, .font-bold {font-weight: 700;}
+.font-semibold {font-weight: 600;}
+.font-medium {font-weight: 500;}
+
+/* Text utilities */
+.text-primary {color: #000000e0;}
+.text-secondary {color: #00000073;}
+.text-muted {color: #00000045;}

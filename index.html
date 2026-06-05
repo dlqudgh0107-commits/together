@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Together | 함께하는 가족 일정</title>
+  <meta name="description" content="가족의 일정과 할일을 한곳에서 관리하세요">
+  <meta name="keywords" content="가족, 일정, 할일, 스케줄">
+  <meta name="author" content="Together">
+  <link rel="canonical" href="https://together-app.web.app">
+  <link rel="icon" type="image/png" href="resource/images/favicon.png">
+  <link rel="stylesheet" href="resource/css/reset.css">
+  <link rel="stylesheet" href="resource/css/font.css">
+  <link rel="stylesheet" href="resource/css/pc.css">
+  <link rel="stylesheet" href="resource/css/mobile.css">
+</head>
+<body>
+  <!-- 로그인 화면 -->
+  <div id="screen-login" class="screen screen--active">
+    <div class="login-container">
+      <div class="login-card">
+        <h1 class="login-title">Together</h1>
+        <p class="login-subtitle">가족의 일정을 함께 관리하세요</p>
+        <button type="button" class="btn btn--primary btn--lg" id="login-btn">Google 로그인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 그룹 선택 화면 -->
+  <div id="screen-group" class="screen">
+    <div class="group-container">
+      <h1 class="group-title">어떤 그룹을 선택하시겠어요?</h1>
+      <div class="group-list" id="group-list"></div>
+      <button type="button" class="btn btn--secondary btn--md" id="create-group-btn">새 그룹 만들기</button>
+    </div>
+  </div>
+
+  <!-- 메인 앱 화면 -->
+  <div id="screen-app" class="screen">
+    <!-- 헤더 -->
+    <header class="app-header">
+      <div class="app-header__left">
+        <h1 class="app-header__title">Together</h1>
+      </div>
+      <div class="app-header__center">
+        <div class="app-header__group" data-switch-group style="cursor: pointer;">
+          <span id="current-group-name">우리 가족</span>
+          <span class="app-header__group-icon">≡</span>
+        </div>
+      </div>
+      <div class="app-header__right">
+        <button type="button" class="btn-icon" id="logout-btn" title="로그아웃">
+          <span>×</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 탭 네비게이션 -->
+    <nav class="app-tabs">
+      <button type="button" class="app-tabs__tab app-tabs__tab--active" data-tab="home">홈</button>
+      <button type="button" class="app-tabs__tab" data-tab="schedule">일정</button>
+      <button type="button" class="app-tabs__tab" data-tab="todo">할일</button>
+      <button type="button" class="app-tabs__tab" data-tab="invite">초대하기</button>
+    </nav>
+
+    <!-- 탭 콘텐츠 -->
+    <main class="app-main">
+      <!-- 홈 탭 -->
+      <div class="app-tab-content app-tab-content--active" data-tab-content="home">
+        <section class="home-section">
+          <h2 class="section-title">AI 요약</h2>
+          <div class="summary-card" id="summary-card">
+            <div class="spinner"></div>
+            <p>요약을 불러오는 중...</p>
+          </div>
+        </section>
+
+        <section class="home-section">
+          <div class="section-header">
+            <h2 class="section-title">가족 멤버</h2>
+          </div>
+          <div class="member-bar" id="member-bar"></div>
+        </section>
+
+        <section class="home-section">
+          <div class="section-header">
+            <h2 class="section-title">다가오는 일정</h2>
+            <button type="button" class="btn btn--sm btn--primary" id="add-schedule-btn">+ 추가</button>
+          </div>
+          <div class="schedule-preview" id="schedule-preview"></div>
+        </section>
+
+        <section class="home-section">
+          <div class="section-header">
+            <h2 class="section-title">할일</h2>
+            <button type="button" class="btn btn--sm btn--primary" id="add-todo-btn">+ 추가</button>
+          </div>
+          <div class="todo-preview" id="todo-preview"></div>
+        </section>
+      </div>
+
+      <!-- 일정 탭 -->
+      <div class="app-tab-content" data-tab-content="schedule">
+        <div class="section-header">
+          <h2 class="section-title">일정</h2>
+          <button type="button" class="btn btn--sm btn--primary" id="schedule-add-btn">+ 추가</button>
+        </div>
+        <div class="schedule-list" id="schedule-list"></div>
+      </div>
+
+      <!-- 할일 탭 -->
+      <div class="app-tab-content" data-tab-content="todo">
+        <div class="section-header">
+          <h2 class="section-title">할일</h2>
+          <button type="button" class="btn btn--sm btn--primary" id="todo-add-btn">+ 추가</button>
+        </div>
+        <div class="todo-list" id="todo-list"></div>
+      </div>
+
+      <!-- 초대하기 탭 -->
+      <div class="app-tab-content" data-tab-content="invite">
+        <section class="invite-section">
+          <h2 class="section-title">가족 초대</h2>
+          <div class="invite-card">
+            <p class="invite-label">초대 코드</p>
+            <div class="invite-code-container">
+              <span class="invite-code" id="invite-code">---</span>
+              <button type="button" class="btn btn--sm btn--secondary" id="copy-invite-btn">복사</button>
+            </div>
+            <p class="invite-description">이 코드를 가족들과 공유해서 함께 일정을 관리하세요.</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- 일정 추가/편집 모달 -->
+  <div id="modal-schedule-form" class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-form-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="schedule-form-title">일정</h2>
+        <button type="button" class="modal-close" data-modal-close>×</button>
+      </div>
+      <form class="form" id="schedule-form">
+        <div class="form-group">
+          <label for="schedule-title" class="form-label">제목</label>
+          <input type="text" id="schedule-title" class="form-input" placeholder="일정 제목" required>
+        </div>
+        <div class="form-group">
+          <label for="schedule-start-date" class="form-label">시작 날짜</label>
+          <input type="date" id="schedule-start-date" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="schedule-end-date" class="form-label">종료 날짜</label>
+          <input type="date" id="schedule-end-date" class="form-input" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="schedule-start-time" class="form-label">시작 시간</label>
+            <input type="time" id="schedule-start-time" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="schedule-end-time" class="form-label">종료 시간</label>
+            <input type="time" id="schedule-end-time" class="form-input">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="schedule-description" class="form-label">설명 (선택)</label>
+          <textarea id="schedule-description" class="form-input form-textarea" placeholder="일정 설명"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn--secondary" data-modal-close>취소</button>
+          <button type="submit" class="btn btn--primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 할일 추가/편집 모달 -->
+  <div id="modal-todo-form" class="modal" role="dialog" aria-modal="true" aria-labelledby="todo-form-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="todo-form-title">할일</h2>
+        <button type="button" class="modal-close" data-modal-close>×</button>
+      </div>
+      <form class="form" id="todo-form">
+        <div class="form-group">
+          <label for="todo-title" class="form-label">할일</label>
+          <input type="text" id="todo-title" class="form-input" placeholder="할일 내용" required>
+        </div>
+        <div class="form-group">
+          <label for="todo-start-date" class="form-label">시작 날짜</label>
+          <input type="date" id="todo-start-date" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="todo-due-date" class="form-label">마감 날짜</label>
+          <input type="date" id="todo-due-date" class="form-input" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="todo-start-time" class="form-label">시작 시간</label>
+            <input type="time" id="todo-start-time" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="todo-end-time" class="form-label">마감 시간</label>
+            <input type="time" id="todo-end-time" class="form-input">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn--secondary" data-modal-close>취소</button>
+          <button type="submit" class="btn btn--primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 일정 상세 모달 -->
+  <div id="modal-schedule-detail" class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-detail-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="schedule-detail-title">일정 상세</h2>
+        <button type="button" class="modal-close" data-modal-close>×</button>
+      </div>
+      <div class="detail-content" id="schedule-detail-content"></div>
+      <div class="form-actions">
+        <button type="button" class="btn btn--danger" id="schedule-delete-btn">삭제</button>
+        <button type="button" class="btn btn--primary" id="schedule-edit-btn">편집</button>
+        <button type="button" class="btn btn--secondary" data-modal-close>닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 할일 상세 모달 -->
+  <div id="modal-todo-detail" class="modal" role="dialog" aria-modal="true" aria-labelledby="todo-detail-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="todo-detail-title">할일 상세</h2>
+        <button type="button" class="modal-close" data-modal-close>×</button>
+      </div>
+      <div class="detail-content" id="todo-detail-content"></div>
+      <div class="form-actions">
+        <button type="button" class="btn btn--danger" id="todo-delete-btn">삭제</button>
+        <button type="button" class="btn btn--primary" id="todo-edit-btn">편집</button>
+        <button type="button" class="btn btn--secondary" data-modal-close>닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+  <script src="resource/js/firebase.js"></script>
+  <script src="resource/js/ai.js"></script>
+  <script src="resource/js/app.js"></script>
+</body>
+</html>
