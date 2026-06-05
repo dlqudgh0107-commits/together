@@ -1,7 +1,7 @@
 import {
   auth, onAuthStateChanged,
   signInWithGoogle, signOutUser,
-  createGroup, joinGroupByCode, getUserGroups, getGroupData, getGroupMembers,
+  createGroup, generateNewInviteCode, joinGroupByCode, getUserGroups, getGroupData, getGroupMembers,
   addSchedule, updateSchedule, deleteSchedule, listenSchedules,
   addTodo, updateTodo, deleteTodo, toggleTodo, listenTodos,
   listenActivities
@@ -417,7 +417,7 @@ function openTodoForm(existing = null) {
 async function loadGroup(groupId, groupName, groupType) {
   try {
     const groupData = await getGroupData(groupId);
-    currentGroup = { id: groupId, name: groupName, type: groupType, inviteCode: groupData.inviteCode };
+    currentGroup = { id: groupId, name: groupName, type: groupType, inviteCode: groupData.activeInviteCode?.code || 'N/A' };
   } catch (err) {
     currentGroup = { id: groupId, name: groupName, type: groupType, inviteCode: 'N/A' };
   }
@@ -522,6 +522,22 @@ function initApp() {
       const originalText = btn.textContent;
       btn.textContent = '✓ 복사됨!';
       setTimeout(() => { btn.textContent = originalText; }, 2000);
+    }
+  });
+
+  // 새 초대 코드 생성
+  document.querySelector('[data-new-invite-code]')?.addEventListener('click', async () => {
+    if (!currentGroup || !currentGroup.id) return;
+    try {
+      const newCode = await generateNewInviteCode(currentGroup.id);
+      currentGroup.inviteCode = newCode;
+      document.querySelector('[data-invite-code]').textContent = newCode;
+      const btn = document.querySelector('[data-new-invite-code]');
+      const originalText = btn.textContent;
+      btn.textContent = '✓ 새 코드 생성됨!';
+      setTimeout(() => { btn.textContent = originalText; }, 2000);
+    } catch (err) {
+      alert('새 코드 생성에 실패했어요.');
     }
   });
 

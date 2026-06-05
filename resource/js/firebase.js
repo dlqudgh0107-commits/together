@@ -36,10 +36,14 @@ async function signOutUser() {
 }
 
 // ===== Group =====
+function generateInviteCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
 async function createGroup(name, type, userId, userNickname, userIcon, userColor) {
-  const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const inviteCode = generateInviteCode();
   const groupRef = await addDoc(collection(db, 'groups'), {
-    name, type, inviteCode, createdBy: userId, createdAt: serverTimestamp()
+    name, type, activeInviteCode: { code: inviteCode, createdAt: serverTimestamp() }, createdBy: userId, createdAt: serverTimestamp()
   });
   await setDoc(doc(db, 'groups', groupRef.id, 'members', userId), {
     nickname: userNickname, icon: userIcon, color: userColor, role: 'admin', joinedAt: serverTimestamp()
@@ -48,18 +52,33 @@ async function createGroup(name, type, userId, userNickname, userIcon, userColor
   return groupRef.id;
 }
 
+async function generateNewInviteCode(groupId) {
+  const newCode = generateInviteCode();
+  await updateDoc(doc(db, 'groups', groupId), {
+    activeInviteCode: { code: newCode, createdAt: serverTimestamp() }
+  });
+  return newCode;
+}
+
 async function joinGroupByCode(inviteCode, userId, userNickname, userIcon, userColor) {
-  const q = query(collection(db, 'groups'), where('inviteCode', '==', inviteCode.toUpperCase()));
-  const snapshot = await getDocs(q);
-  if (snapshot.empty) throw new Error('초대 코드를 찾을 수 없어요.');
-  const groupDoc = snapshot.docs[0];
-  const groupId = groupDoc.id;
-  const groupData = groupDoc.data();
-  await setDoc(doc(db, 'groups', groupId, 'members', userId), {
+  const groupsSnapshot = await getDocs(collection(db, 'groups'));
+  let foundGroup = null;
+
+  for (const doc of groupsSnapshot.docs) {
+    const data = doc.data();
+    if (data.activeInviteCode?.code === inviteCode.toUpperCase()) {
+      foundGroup = { id: doc.id, ...data };
+      break;
+    }
+  }
+
+  if (!foundGroup) throw new Error('유효한 초대 코드를 찾을 수 없어요.');
+
+  await setDoc(doc(db, 'groups', foundGroup.id, 'members', userId), {
     nickname: userNickname, icon: userIcon, color: userColor, role: 'member', joinedAt: serverTimestamp()
   });
-  await setDoc(doc(db, 'users', userId, 'groups', groupId), { name: groupData.name, type: groupData.type, joinedAt: serverTimestamp() });
-  return groupId;
+  await setDoc(doc(db, 'users', userId, 'groups', foundGroup.id), { name: foundGroup.name, type: foundGroup.type, joinedAt: serverTimestamp() });
+  return foundGroup.id;
 }
 
 async function getUserGroups(userId) {
@@ -158,7 +177,7 @@ function listenActivities(groupId, callback) {
 export {
   auth, db, onAuthStateChanged,
   signInWithGoogle, signOutUser,
-  createGroup, joinGroupByCode, getUserGroups, getGroupData, getGroupMembers,
+  createGroup, generateNewInviteCode, joinGroupByCode, getUserGroups, getGroupData, getGroupMembers,
   addSchedule, updateSchedule, deleteSchedule, listenSchedules,
   addTodo, updateTodo, deleteTodo, toggleTodo, listenTodos,
   addActivity, listenActivities
