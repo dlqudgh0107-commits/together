@@ -441,6 +441,9 @@ async function loadGroup(groupId, groupName, groupType) {
   unsubActivities = listenActivities(groupId, (items) => { renderFeed(items); });
 
   showScreen('screen-home');
+  renderMemberBar();
+  renderScheduleList();
+  renderTodoList();
   setTimeout(() => loadAISummary(), 500);
 }
 
