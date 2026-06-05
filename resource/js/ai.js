@@ -1,8 +1,8 @@
 // AI Summary Function
 const getAISummary = async (schedules, todos, members) => {
   try {
-    // Localhost를 배포된 URL로 변경할 예정
-    const apiUrl = 'http://localhost:3000/api/ai-summary';
+    // Render 배포 백엔드 URL
+    const apiUrl = 'https://together-api-yarf.onrender.com/api/ai-summary';
 
     const response = await fetch(apiUrl, {
       method: 'POST',
