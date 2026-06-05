@@ -13,15 +13,10 @@ app.use(express.static(__dirname));
 console.log('서버 시작...');
 console.log('ANTHROPIC_API_KEY 로드:', process.env.ANTHROPIC_API_KEY ? '✓ 있음' : '✗ 없음');
 
-let client;
-try {
-  client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  });
-  console.log('✓ Anthropic SDK 초기화 성공');
-} catch(e) {
-  console.error('✗ Anthropic SDK 초기화 실패:', e.message);
-}
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+console.log('✓ Anthropic SDK 초기화 완료');
 
 // GET /health - 헬스 체크
 app.get('/health', (req, res) => {
