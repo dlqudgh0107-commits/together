@@ -490,7 +490,14 @@ function initApp() {
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('active'); });
   });
   document.querySelectorAll('[data-modal-close]').forEach(btn => {
-    btn.addEventListener('click', () => btn.closest('.modal-overlay')?.classList.remove('active'));
+    btn.addEventListener('click', () => {
+      const modal = btn.closest('[data-modal]');
+      if (modal && modal.dataset.modal === 'group-list') {
+        modal.style.display = 'none';
+      } else {
+        btn.closest('.modal-overlay')?.classList.remove('active');
+      }
+    });
   });
 
   // 그룹 생성/참여/초대 탭
