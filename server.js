@@ -87,8 +87,8 @@ ${todoText}
 
     console.log('[AI 요약] Claude API 호출 중...');
     const message = await client.messages.create({
-      model: 'claude-3-sonnet-20240229',
-      max_tokens: 512,
+      model: 'claude-opus-4-1',
+      max_tokens: 1024,
       messages: [
         {
           role: 'user',
