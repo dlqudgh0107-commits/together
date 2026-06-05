@@ -24,49 +24,60 @@ app.post('/api/ai-summary', async (req, res) => {
   try {
     const { schedules, todos, members } = req.body;
 
-    // 향후 일정과 진행 중인 할일만 필터링
+    // 향후 일정과 미완료 할일만 필터링
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const upcomingSchedules = schedules.filter(s => {
-      const endDate = new Date(s.endDate);
-      endDate.setHours(23, 59, 59, 999);
-      return endDate >= today;
-    });
+    const upcomingSchedules = (schedules || []).filter(s => {
+      const startDate = s.startDate || s.date;
+      const checkDate = new Date(startDate + 'T00:00:00');
+      return checkDate >= today;
+    }).slice(0, 10);
 
-    const pendingTodos = todos.filter(t => {
-      const dueDate = new Date(t.dueDate);
-      dueDate.setHours(23, 59, 59, 999);
-      return !t.completed && dueDate >= today;
-    });
+    const pendingTodos = (todos || []).filter(t => {
+      return t.status === 'todo';
+    }).slice(0, 10);
 
     // Claude 호출을 위한 프롬프트 구성
     const scheduleText = upcomingSchedules.length > 0
       ? upcomingSchedules
-        .map(s => `- ${s.title} (${s.startDate} ~ ${s.endDate}, ${s.startTime} ~ ${s.endTime})`)
+        .map(s => {
+          const startDate = s.startDate || s.date;
+          const endDate = s.endDate || startDate;
+          const timeRange = s.startTime && s.endTime ? ` ${s.startTime}~${s.endTime}` : s.startTime ? ` ${s.startTime}` : '';
+          const dateRange = startDate === endDate ? startDate : `${startDate}~${endDate}`;
+          return `- ${s.title} (${dateRange}${timeRange})`;
+        })
         .join('\n')
       : '예정된 일정이 없습니다.';
 
     const todoText = pendingTodos.length > 0
       ? pendingTodos
-        .map(t => `- ${t.title} (마감: ${t.dueDate} ${t.endTime})`)
+        .map(t => {
+          const due = t.dueDate ? `마감: ${t.dueDate}` : '';
+          const time = t.startTime && t.endTime ? `${t.startTime}~${t.endTime}` : t.startTime ? t.startTime : '';
+          const info = [due, time].filter(x => x).join(' ');
+          return `- ${t.title}${info ? ` (${info})` : ''}`;
+        })
         .join('\n')
       : '진행 중인 할일이 없습니다.';
 
-    const memberText = members.map(m => `- ${m.name}`).join('\n');
+    const memberText = (members || []).map(m => `- ${m.nickname || m.name}`).join('\n');
 
-    const prompt = `우리 가족의 다가오는 일정과 할일을 요약해줘. 간단하고 명확하게.
+    const prompt = `당신은 팀 일정 관리 AI 비서입니다. 아래 정보를 보고 2~3문장으로 친근하게 요약해주세요.
 
-가족 멤버:
-${memberText}
+오늘 날짜: ${today.toLocaleDateString('ko-KR')}
+
+팀 멤버:
+${memberText || '멤버 정보 없음'}
 
 다가오는 일정:
 ${scheduleText}
 
-진행 중인 할일:
+미완료 할 일:
 ${todoText}
 
-이 정보를 기반으로 가족의 주간 계획을 요약해주고, 중요한 점이나 주의사항이 있으면 언급해줘.`;
+간결하고 유용한 요약을 한국어로 작성해주세요. 마감이 임박한 것이 있으면 먼저 언급해주세요.`;
 
     const message = await client.messages.create({
       model: 'claude-opus-4-7-20250219',
