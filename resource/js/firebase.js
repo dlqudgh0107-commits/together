@@ -1,11 +1,12 @@
 // Firebase initialization
 const firebaseConfig = {
-  apiKey: 'AIzaSyDpfVTxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-  authDomain: 'together-app.firebaseapp.com',
-  projectId: 'together-app-xxxx',
-  storageBucket: 'together-app.appspot.com',
-  messagingSenderId: '123456789',
-  appId: '1:123456789:web:xxxxxxxxxxxxx'
+  apiKey: "AIzaSyCcwW16cgi6kt4ztdW6LMwpJdBNJTlaPxY",
+  authDomain: "together-app-6cabd.firebaseapp.com",
+  projectId: "together-app-6cabd",
+  storageBucket: "together-app-6cabd.firebasestorage.app",
+  messagingSenderId: "587547619757",
+  appId: "1:587547619757:web:64899799389cb13c077124",
+  measurementId: "G-354V84FLB7"
 };
 
 const app = firebase.initializeApp(firebaseConfig);
