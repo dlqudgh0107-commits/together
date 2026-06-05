@@ -564,6 +564,28 @@ function initApp() {
   // AI 카드 클릭 새로고침
   document.querySelector('[data-ai-card]')?.addEventListener('click', loadAISummary);
 
+  // 그룹 목록 표시
+  const showGroupListModal = async () => {
+    const groups = await getUserGroups(currentUser.uid);
+    const listEl = document.querySelector('[data-group-list]');
+    listEl.innerHTML = groups.map(g => `
+      <div data-group-item="${g.id}" style="padding: 14px 16px; background: #f5f5f5; border-radius: 10px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#e8e8e8'" onmouseout="this.style.background='#f5f5f5'">
+        <div style="font-weight: 600; color: #000000e0;">${g.name}</div>
+        <div style="font-size: 12px; color: #00000073; margin-top: 4px;">${g.type === 'family' ? '가족' : g.type === 'company' ? '회사' : g.type === 'project' ? '프로젝트' : g.type === 'study' ? '스터디' : g.type === 'couple' ? '커플' : '동호회'}</div>
+        ${currentGroup && currentGroup.id === g.id ? '<div style="font-size: 11px; color: #1677ff; margin-top: 6px; font-weight: 600;">✓ 현재 그룹</div>' : ''}
+      </div>
+    `).join('');
+
+    groups.forEach(g => {
+      document.querySelector(`[data-group-item="${g.id}"]`)?.addEventListener('click', async () => {
+        await loadGroup(g.id, g.name, g.type);
+        document.querySelector('[data-modal="group-list"]').style.display = 'none';
+      });
+    });
+
+    document.querySelector('[data-modal="group-list"]').style.display = 'flex';
+  };
+
   // 그룹 변경/추가
   const showGroupScreen = () => {
     showScreen('screen-group');
@@ -573,8 +595,12 @@ function initApp() {
     }
   };
 
-  document.querySelector('[data-group-switch]')?.addEventListener('click', showGroupScreen);
+  document.querySelector('[data-group-switch]')?.addEventListener('click', showGroupListModal);
   document.querySelector('[data-add-group]')?.addEventListener('click', showGroupScreen);
+  document.querySelector('[data-group-add-new]')?.addEventListener('click', () => {
+    document.querySelector('[data-modal="group-list"]').style.display = 'none';
+    showGroupScreen();
+  });
 
   // 로그아웃
   document.querySelector('[data-signout]')?.addEventListener('click', async () => {
