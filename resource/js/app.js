@@ -166,20 +166,17 @@ function renderTodoList() {
       const member = currentMembers.find(m => m.id === t.assigneeId);
       const isDone = t.status === 'done';
       const timeDisplay = t.startTime && t.endTime ? `${t.startTime} ~ ${t.endTime}` : t.startTime ? t.startTime : '';
+      const dueDateStr = t.dueDate ? new Date(t.dueDate + 'T00:00:00').toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
       return `
-        <div class="todo-card" data-todo-id="${t.id}" data-todo-data='${JSON.stringify(t)}' style="margin: 0 20px 8px; padding: 16px; background: #ffffff; border-radius: 8px; display: flex; gap: 12px; align-items: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.06);">
-          <div class="todo-card__check ${isDone ? 'done' : ''}" style="width: 24px; height: 24px; border: 2px solid #d9d9d9; border-radius: 50%; flex-shrink: 0; cursor: pointer; ${isDone ? 'background: #52c41a; border-color: #52c41a;' : ''}"></div>
+        <div class="todo-card" data-todo-id="${t.id}" style="margin: 0 20px 8px; padding: 16px; background: #ffffff; border-radius: 8px; display: flex; gap: 12px; align-items: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.06); cursor: pointer;">
+          <div class="todo-card__check ${isDone ? 'done' : ''}" style="width: 24px; height: 24px; border: 2px solid #d9d9d9; border-radius: 50%; flex-shrink: 0; ${isDone ? 'background: #52c41a; border-color: #52c41a;' : ''}"></div>
           <div class="todo-card__body" style="flex: 1; min-width: 0;">
             <div class="todo-card__title ${isDone ? 'done' : ''}" style="font-weight: 500; color: #000000e0; ${isDone ? 'text-decoration: line-through; color: #00000073;' : ''}">${t.title}</div>
             <div class="todo-card__assignee" style="font-size: 13px; color: #00000073; margin-top: 4px;">
               ${member ? `${member.icon} ${member.nickname}` : '담당자 없음'}
+              ${dueDateStr ? ` · 📅 ${dueDateStr}` : ''}
               ${timeDisplay ? ` · 🕐 ${timeDisplay}` : ''}
-              ${t.dueDate ? ` · D-${Math.max(0, Math.ceil((new Date(t.dueDate) - new Date()) / 86400000))}` : ''}
             </div>
-          </div>
-          <div style="display: flex; gap: 6px; flex-shrink: 0;">
-            <button class="todo-card__edit" data-todo-id="${t.id}" style="width: 32px; height: 32px; background: #f5f5f5; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;" title="수정">✏️</button>
-            <button class="todo-card__delete" data-todo-id="${t.id}" style="width: 32px; height: 32px; background: #fff1f0; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;" title="삭제">🗑️</button>
           </div>
         </div>
       `;
@@ -188,31 +185,17 @@ function renderTodoList() {
   containers.forEach(container => {
     container.innerHTML = html;
 
-    container.querySelectorAll('.todo-card__check').forEach(check => {
-      check.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const card = check.closest('.todo-card');
-        const data = JSON.parse(card.dataset.todoData);
-        toggleTodo(currentGroup.id, card.dataset.todoId, data.status, data.title, currentUser.uid, getMemberNickname());
-      });
-    });
-
-    container.querySelectorAll('.todo-card__edit').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const card = btn.closest('.todo-card');
-        const data = JSON.parse(card.dataset.todoData);
-        openTodoForm(data);
-      });
-    });
-
-    container.querySelectorAll('.todo-card__delete').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const card = btn.closest('.todo-card');
-        const data = JSON.parse(card.dataset.todoData);
-        if (confirm('할 일을 삭제할까요?')) {
-          await deleteTodo(currentGroup.id, card.dataset.todoId, data.title, currentUser.uid, getMemberNickname());
+    container.querySelectorAll('.todo-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        const check = card.querySelector('.todo-card__check');
+        if (e.target === check) {
+          const todoId = card.dataset.todoId;
+          const todo = allTodos.find(t => t.id === todoId);
+          if (todo) {
+            toggleTodo(currentGroup.id, todoId, todo.status, todo.title, currentUser.uid, getMemberNickname());
+          }
+        } else {
+          openTodoDetail(card.dataset.todoId);
         }
       });
     });
@@ -348,6 +331,44 @@ function openScheduleForm(existing = null) {
       await addSchedule(currentGroup.id, data, currentUser.uid, getMemberNickname());
     }
     overlay.classList.remove('active');
+  };
+  overlay.classList.add('active');
+}
+
+// ===== 할일 상세 모달 =====
+function openTodoDetail(todoId) {
+  const t = allTodos.find(t => t.id === todoId);
+  if (!t) return;
+  const member = currentMembers.find(m => m.id === t.assigneeId);
+  const overlay = document.querySelector('[data-modal="todo-detail"]');
+  overlay.querySelector('.modal__title').textContent = t.title;
+
+  let dateStr = '';
+  if (t.startDate) {
+    dateStr = new Date(t.startDate + 'T00:00:00').toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  if (t.dueDate && t.startDate !== t.dueDate) {
+    dateStr += ` ~ ${new Date(t.dueDate + 'T00:00:00').toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+  } else if (t.dueDate && !t.startDate) {
+    dateStr = new Date(t.dueDate + 'T00:00:00').toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  if (t.startTime && t.endTime) {
+    dateStr += ` ${t.startTime} ~ ${t.endTime}`;
+  } else if (t.startTime) {
+    dateStr += ` ${t.startTime}`;
+  } else if (t.endTime) {
+    dateStr += ` ~ ${t.endTime}`;
+  }
+
+  overlay.querySelector('[data-todo-detail-date]').textContent = dateStr || '날짜 없음';
+  overlay.querySelector('[data-todo-detail-assignee]').textContent = member ? `${member.icon} ${member.nickname}` : '담당자 없음';
+  overlay.querySelector('[data-todo-detail-edit]').onclick = () => { overlay.classList.remove('active'); openTodoForm(t); };
+  overlay.querySelector('[data-todo-detail-delete]').onclick = async () => {
+    if (confirm('할 일을 삭제할까요?')) {
+      await deleteTodo(currentGroup.id, todoId, t.title, currentUser.uid, getMemberNickname());
+      overlay.classList.remove('active');
+    }
   };
   overlay.classList.add('active');
 }

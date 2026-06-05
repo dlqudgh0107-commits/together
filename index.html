@@ -266,6 +266,29 @@
     </div>
   </div>
 
+  <!-- 할일 상세 -->
+  <div class="modal-overlay" data-modal="todo-detail">
+    <div class="modal">
+      <div class="modal__handle"></div>
+      <div class="modal__title">할 일 상세</div>
+      <div class="modal__close" data-modal-close>✕</div>
+      <div style="display:flex; flex-direction:column; gap:16px; margin-top:8px;">
+        <div>
+          <div style="font-size:12px; color:#00000073; margin-bottom:4px;">기간·시간</div>
+          <div style="font-size:15px; font-weight:500;" data-todo-detail-date></div>
+        </div>
+        <div>
+          <div style="font-size:12px; color:#00000073; margin-bottom:4px;">담당자</div>
+          <div style="font-size:15px; font-weight:500;" data-todo-detail-assignee></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="btn-primary" data-todo-detail-edit style="background:#f5f5f5; color:#000000e0;">수정</button>
+          <button class="btn-primary" data-todo-detail-delete style="background:#fff1f0; color:#ff4d4f;">삭제</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 일정 등록/수정 -->
   <div class="modal-overlay" data-modal="schedule-form">
     <div class="modal">
