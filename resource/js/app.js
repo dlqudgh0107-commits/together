@@ -65,9 +65,10 @@ function timeAgo(ts) {
 
 // ===== 멤버바 렌더 =====
 function renderMemberBar() {
-  const bar = document.querySelector('[data-member-bar]');
-  if (!bar) return;
-  bar.innerHTML = `
+  const bars = document.querySelectorAll('[data-member-bar]');
+  if (bars.length === 0) return;
+
+  const html = `
     <div class="member-chip member-chip--all" data-member-id="all">
       <div class="member-chip__avatar ${filterMemberId === 'all' ? 'active' : ''}">전체</div>
       <span class="member-chip__name">전체</span>
@@ -81,11 +82,15 @@ function renderMemberBar() {
       </div>
     `).join('')}
   `;
-  bar.querySelectorAll('.member-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      filterMemberId = chip.dataset.memberId;
-      renderMemberBar();
-      renderScheduleList();
+
+  bars.forEach(bar => {
+    bar.innerHTML = html;
+    bar.querySelectorAll('.member-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        filterMemberId = chip.dataset.memberId;
+        renderMemberBar();
+        renderScheduleList();
+      });
     });
   });
 }
