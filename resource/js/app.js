@@ -3,7 +3,7 @@ import {
   signInWithGoogle, signOutUser,
   createGroup, joinGroupByCode, getUserGroups, getGroupMembers,
   addSchedule, updateSchedule, deleteSchedule, listenSchedules,
-  addTodo, toggleTodo, listenTodos,
+  addTodo, updateTodo, deleteTodo, toggleTodo, listenTodos,
   listenActivities
 } from './firebase.js';
 import { getAISummary } from './ai.js';
@@ -165,15 +165,21 @@ function renderTodoList() {
     : filtered.map(t => {
       const member = currentMembers.find(m => m.id === t.assigneeId);
       const isDone = t.status === 'done';
+      const timeDisplay = t.startTime && t.endTime ? `${t.startTime} ~ ${t.endTime}` : t.startTime ? t.startTime : '';
       return `
-        <div class="todo-card" data-todo-id="${t.id}" data-status="${t.status}" data-title="${t.title}" style="margin: 0 20px 8px;">
-          <div class="todo-card__check ${isDone ? 'done' : ''}"></div>
-          <div class="todo-card__body">
-            <div class="todo-card__title ${isDone ? 'done' : ''}">${t.title}</div>
-            <div class="todo-card__assignee">
+        <div class="todo-card" data-todo-id="${t.id}" data-todo-data='${JSON.stringify(t)}' style="margin: 0 20px 8px; padding: 16px; background: #ffffff; border-radius: 8px; display: flex; gap: 12px; align-items: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.06);">
+          <div class="todo-card__check ${isDone ? 'done' : ''}" style="width: 24px; height: 24px; border: 2px solid #d9d9d9; border-radius: 50%; flex-shrink: 0; cursor: pointer; ${isDone ? 'background: #52c41a; border-color: #52c41a;' : ''}"></div>
+          <div class="todo-card__body" style="flex: 1; min-width: 0;">
+            <div class="todo-card__title ${isDone ? 'done' : ''}" style="font-weight: 500; color: #000000e0; ${isDone ? 'text-decoration: line-through; color: #00000073;' : ''}">${t.title}</div>
+            <div class="todo-card__assignee" style="font-size: 13px; color: #00000073; margin-top: 4px;">
               ${member ? `${member.icon} ${member.nickname}` : '담당자 없음'}
-              ${t.dueDate ? ` · <span class="todo-card__due">D-${Math.max(0, Math.ceil((new Date(t.dueDate) - new Date()) / 86400000))}</span>` : ''}
+              ${timeDisplay ? ` · 🕐 ${timeDisplay}` : ''}
+              ${t.dueDate ? ` · D-${Math.max(0, Math.ceil((new Date(t.dueDate) - new Date()) / 86400000))}` : ''}
             </div>
+          </div>
+          <div style="display: flex; gap: 6px; flex-shrink: 0;">
+            <button class="todo-card__edit" data-todo-id="${t.id}" style="width: 32px; height: 32px; background: #f5f5f5; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;" title="수정">✏️</button>
+            <button class="todo-card__delete" data-todo-id="${t.id}" style="width: 32px; height: 32px; background: #fff1f0; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;" title="삭제">🗑️</button>
           </div>
         </div>
       `;
@@ -181,9 +187,33 @@ function renderTodoList() {
 
   containers.forEach(container => {
     container.innerHTML = html;
-    container.querySelectorAll('.todo-card').forEach(card => {
-      card.addEventListener('click', () => {
-        toggleTodo(currentGroup.id, card.dataset.todoId, card.dataset.status, card.dataset.title, currentUser.uid, getMemberNickname());
+
+    container.querySelectorAll('.todo-card__check').forEach(check => {
+      check.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = check.closest('.todo-card');
+        const data = JSON.parse(card.dataset.todoData);
+        toggleTodo(currentGroup.id, card.dataset.todoId, data.status, data.title, currentUser.uid, getMemberNickname());
+      });
+    });
+
+    container.querySelectorAll('.todo-card__edit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.todo-card');
+        const data = JSON.parse(card.dataset.todoData);
+        openTodoForm(data);
+      });
+    });
+
+    container.querySelectorAll('.todo-card__delete').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.todo-card');
+        const data = JSON.parse(card.dataset.todoData);
+        if (confirm('할 일을 삭제할까요?')) {
+          await deleteTodo(currentGroup.id, card.dataset.todoId, data.title, currentUser.uid, getMemberNickname());
+        }
       });
     });
   });
@@ -322,23 +352,36 @@ function openScheduleForm(existing = null) {
   overlay.classList.add('active');
 }
 
-// ===== Todo 등록 모달 =====
-function openTodoForm() {
+// ===== Todo 등록/수정 모달 =====
+function openTodoForm(existing = null) {
   const overlay = document.querySelector('[data-modal="todo-form"]');
   const form = overlay.querySelector('[data-todo-form]');
-  form.querySelector('[data-field="title"]').value = '';
-  form.querySelector('[data-field="dueDate"]').value = '';
+  overlay.querySelector('.modal__title').textContent = existing ? '할 일 수정' : '할 일 추가';
+
+  form.querySelector('[data-field="title"]').value = existing?.title || '';
+  form.querySelector('[data-field="startDate"]').value = existing?.startDate || '';
+  form.querySelector('[data-field="startTime"]').value = existing?.startTime || '';
+  form.querySelector('[data-field="dueDate"]').value = existing?.dueDate || '';
+  form.querySelector('[data-field="endTime"]').value = existing?.endTime || '';
 
   const memberSelect = form.querySelector('[data-field="assignee"]');
-  memberSelect.innerHTML = `<option value="">담당자 없음</option>` + currentMembers.map(m => `<option value="${m.id}">${m.icon} ${m.nickname}</option>`).join('');
+  memberSelect.innerHTML = `<option value="">담당자 없음</option>` + currentMembers.map(m => `<option value="${m.id}" ${existing?.assigneeId === m.id ? 'selected' : ''}>${m.icon} ${m.nickname}</option>`).join('');
 
   form.onsubmit = async (e) => {
     e.preventDefault();
     const title = form.querySelector('[data-field="title"]').value.trim();
+    const startDate = form.querySelector('[data-field="startDate"]').value;
+    const startTime = form.querySelector('[data-field="startTime"]').value;
     const dueDate = form.querySelector('[data-field="dueDate"]').value;
+    const endTime = form.querySelector('[data-field="endTime"]').value;
     const assigneeId = form.querySelector('[data-field="assignee"]').value;
     if (!title) return;
-    await addTodo(currentGroup.id, { title, dueDate, assigneeId }, currentUser.uid, getMemberNickname());
+    const data = { title, startDate, startTime, dueDate, endTime, assigneeId };
+    if (existing) {
+      await updateTodo(currentGroup.id, existing.id, data, currentUser.uid, getMemberNickname());
+    } else {
+      await addTodo(currentGroup.id, data, currentUser.uid, getMemberNickname());
+    }
     overlay.classList.remove('active');
   };
   overlay.classList.add('active');

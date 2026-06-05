@@ -108,6 +108,16 @@ async function addTodo(groupId, data, userId, userNickname) {
   return ref.id;
 }
 
+async function updateTodo(groupId, todoId, data, userId, userNickname) {
+  await updateDoc(doc(db, 'groups', groupId, 'todos', todoId), { ...data, updatedAt: serverTimestamp() });
+  await addActivity(groupId, { type: 'todo_update', userId, nickname: userNickname, targetTitle: data.title, message: `"${data.title}" 할 일을 수정했어요.` });
+}
+
+async function deleteTodo(groupId, todoId, title, userId, userNickname) {
+  await deleteDoc(doc(db, 'groups', groupId, 'todos', todoId));
+  await addActivity(groupId, { type: 'todo_delete', userId, nickname: userNickname, targetTitle: title, message: `"${title}" 할 일을 삭제했어요.` });
+}
+
 async function toggleTodo(groupId, todoId, currentStatus, title, userId, userNickname) {
   const newStatus = currentStatus === 'todo' ? 'done' : 'todo';
   await updateDoc(doc(db, 'groups', groupId, 'todos', todoId), { status: newStatus, updatedAt: serverTimestamp() });
@@ -144,6 +154,6 @@ export {
   signInWithGoogle, signOutUser,
   createGroup, joinGroupByCode, getUserGroups, getGroupMembers,
   addSchedule, updateSchedule, deleteSchedule, listenSchedules,
-  addTodo, toggleTodo, listenTodos,
+  addTodo, updateTodo, deleteTodo, toggleTodo, listenTodos,
   addActivity, listenActivities
 };
