@@ -1,84 +1,115 @@
 /* ===== Mobile Styles (max-width: 767px) ===== */
 @media (max-width: 767px) {
-  /* ===== Font Sizes ===== */
-  body {font-size: 14px;}
+  body {font-size: 13px;}
+
+  h1, h2, h3 {line-height: 1.4;}
   h1 {font-size: 24px;}
-  h2 {font-size: 20px;}
-  h3 {font-size: 18px;}
+  h2 {font-size: 16px;}
+  h3 {font-size: 14px;}
 
-  /* ===== Login Screen ===== */
-  .login-container {padding: 16px;}
+  /* Login Screen */
   .login-card {padding: 32px 20px;}
-  .login-title {font-size: 28px; margin-bottom: 12px;}
-  .login-subtitle {font-size: 13px; margin-bottom: 24px;}
+  .login-title {font-size: 28px; margin-bottom: 8px;}
+  .login-subtitle {font-size: 12px; margin-bottom: 24px;}
 
-  /* ===== App Header ===== */
-  .app-header {grid-template-columns: 1fr auto; padding: 12px 16px; height: 56px;}
-  .app-header__center {display: none;}
-  .app-header__title {font-size: 18px;}
-  .app-header__right {flex: 1; justify-content: flex-end;}
-
-  /* ===== App Tabs ===== */
-  .app-tabs__tab {font-size: 12px; padding: 10px 8px;}
-
-  /* ===== Main Content ===== */
-  .app-main {padding: 16px;}
-
-  .section-title {font-size: 16px; margin-bottom: 12px;}
-
-  .section-header {margin-bottom: 12px;}
-
-  .home-section {margin-bottom: 24px;}
-
-  /* ===== Summary Card ===== */
-  .summary-card {padding: 16px; min-height: 100px;}
-
-  /* ===== Member Bar ===== */
-  .member-bar {gap: 8px;}
-  .member-item {width: 40px; height: 40px; font-size: 12px;}
-
-  /* ===== Schedule/Todo Items ===== */
-  .schedule-item, .todo-item {padding: 10px; border-left-width: 3px;}
-  .schedule-item__title, .todo-item__title {font-size: 13px; margin-bottom: 3px;}
-  .schedule-item__date, .todo-item__date {font-size: 11px;}
-
-  /* ===== Buttons ===== */
-  .btn {padding: 8px 12px; font-size: 13px;}
-  .btn--lg {padding: 10px 16px; font-size: 14px;}
-
-  /* ===== Forms ===== */
-  .form-row {grid-template-columns: 1fr 1fr; gap: 8px;}
-  .form-label {font-size: 13px;}
-  .form-input {padding: 8px 10px; font-size: 13px;}
-  .form-textarea {min-height: 80px;}
-
-  /* ===== Modal ===== */
-  .modal-content {width: 95%; max-height: 95vh; padding: 20px;}
-  .modal-title {font-size: 18px;}
-
-  .detail-row {padding: 6px 0;}
-  .detail-label {font-size: 11px;}
-  .detail-value {font-size: 13px;}
-
-  /* ===== Invite Card ===== */
-  .invite-code {font-size: 13px; padding: 6px 10px;}
-  .invite-description {font-size: 11px;}
-
-  /* ===== Form Actions ===== */
-  .form-actions {flex-direction: column;}
-  .form-actions .btn {width: 100%;}
-
-  /* ===== Empty State ===== */
-  .empty-state {padding: 30px 16px;}
-  .empty-state__icon {font-size: 40px;}
-  .empty-state__text {font-size: 13px;}
-
-  /* ===== Toast ===== */
-  .toast {bottom: 16px; right: 16px; left: 16px; font-size: 13px; padding: 10px 14px;}
-
-  /* ===== Group Selection ===== */
-  .group-container {padding: 24px 16px;}
-  .group-title {font-size: 22px; margin-bottom: 24px;}
+  /* Group Selection */
+  .group-container {padding: 24px 12px;}
+  .group-title {font-size: 20px; margin-bottom: 16px;}
   .group-item {padding: 12px;}
   .group-item__name {font-size: 14px;}
+  .group-item__info {font-size: 11px;}
+
+  /* Header */
+  .app-header {height: 52px; padding: 10px 12px;}
+  .header-menu-btn {width: 36px; height: 36px; font-size: 18px;}
+  .header-icon-btn {width: 36px; height: 36px;}
+  .header-title {font-size: 14px;}
+  .notification-badge {width: 18px; height: 18px; font-size: 9px;}
+
+  /* Sidebar */
+  .sidebar {width: 240px;}
+  .sidebar-header {padding: 12px;}
+  .sidebar-title {font-size: 14px;}
+  .sidebar-section {padding: 12px;}
+  .sidebar-section-title {font-size: 10px;}
+  .user-profile {padding: 10px;}
+  .user-avatar {width: 36px; height: 36px; font-size: 18px;}
+  .user-name {font-size: 12px;}
+  .user-email {font-size: 11px;}
+
+  /* Tabs */
+  .app-tabs {height: 52px;}
+  .app-tabs__tab {font-size: 11px; padding: 8px 8px;}
+
+  /* Main Content */
+  .app-main {padding-bottom: 65px; padding: 12px 8px 65px 8px;}
+  .card-section {gap: 8px;}
+  .section-title {font-size: 14px; font-weight: 600;}
+  .app-tab-content {padding: 12px 8px;}
+
+  /* Cards */
+  .summary-card, .activity-card, .today-card {padding: 12px;}
+  .summary-card p {font-size: 12px;}
+  .activity-title {font-size: 12px;}
+  .activity-time {font-size: 10px;}
+  .activity-action {padding: 5px 10px; font-size: 11px;}
+
+  /* Member Bar */
+  .member-item {width: 40px; height: 40px; font-size: 11px;}
+
+  /* Schedule */
+  .schedule-header {margin-bottom: 8px;}
+  .schedule-item {padding: 10px;}
+  .schedule-item__title {font-size: 13px; margin-bottom: 4px;}
+  .schedule-item__date {font-size: 11px;}
+  .schedule-item__member {font-size: 10px;}
+
+  /* Todo */
+  .todo-header {gap: 8px; margin-bottom: 8px;}
+  .filter-tabs {gap: 6px;}
+  .filter-tab {padding: 5px 10px; font-size: 11px;}
+  .todo-item {padding: 10px; border-left-width: 3px;}
+  .todo-item__title {font-size: 13px;}
+  .todo-item__priority {padding: 2px 6px; font-size: 9px;}
+  .todo-item__meta {font-size: 11px;}
+  .todo-item__member {font-size: 10px;}
+
+  /* FAB */
+  .fab-button {width: 50px; height: 50px; font-size: 22px; bottom: 65px;}
+  .fab-menu {bottom: 120px;}
+  .fab-menu-item {padding: 10px 12px; font-size: 12px; margin-bottom: 6px;}
+  .fab-menu-icon {font-size: 14px;}
+
+  /* Forms */
+  .form-group {gap: 4px;}
+  .form-label {font-size: 12px;}
+  .form-input {padding: 9px 10px; font-size: 13px;}
+  .form-row {gap: 8px;}
+
+  /* Buttons */
+  .btn {padding: 9px 12px; font-size: 12px;}
+  .btn--sm {padding: 5px 10px; font-size: 11px;}
+  .btn--md {padding: 7px 14px; font-size: 12px;}
+  .btn--lg {padding: 10px 16px; font-size: 13px;}
+
+  /* Modal */
+  .modal-content {padding: 16px; border-radius: 12px;}
+  .modal-title {font-size: 16px;}
+
+  /* Dropdown */
+  .dropdown-menu {min-width: 140px; right: 12px;}
+  .dropdown-item {padding: 10px 12px; font-size: 12px;}
+
+  /* Empty State */
+  .empty-state {padding: 16px 12px; font-size: 12px;}
+}
+
+/* ===== Small Phones (max-width: 480px) ===== */
+@media (max-width: 480px) {
+  .login-card {padding: 24px 16px;}
+  .login-title {font-size: 24px;}
+  .group-container {padding: 16px 12px;}
+  .group-title {font-size: 18px;}
+
+  .btn--lg {padding: 10px 12px; font-size: 12px;}
 }

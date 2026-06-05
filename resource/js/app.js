@@ -10,8 +10,10 @@ let scheduleUnsubscribe = null;
 let todoUnsubscribe = null;
 let editingScheduleId = null;
 let editingTodoId = null;
+let currentTodoFilter = 'all';
+let notifications = [];
 
-// ===== Initialize App =====
+// ===== Initialize =====
 document.addEventListener('DOMContentLoaded', () => {
   initializeApp();
 });
@@ -20,7 +22,6 @@ const initializeApp = async () => {
   currentUser = await getCurrentUser();
 
   if (currentUser) {
-    // User logged in - show group selection or app
     await updateUserProfile(currentUser.uid, {
       name: currentUser.displayName,
       email: currentUser.email,
@@ -33,7 +34,7 @@ const initializeApp = async () => {
       selectGroup(groups[0]);
     } else {
       showScreen('screen-group');
-      await loadGroupList();
+      loadGroupList();
     }
   } else {
     showScreen('screen-login');
@@ -56,15 +57,24 @@ const setupEventListeners = () => {
   // Login
   document.getElementById('login-btn')?.addEventListener('click', handleLogin);
 
-  // Group
-  document.querySelector('[data-switch-group]')?.addEventListener('click', () => {
-    showScreen('screen-group');
-    loadGroupList();
-  });
+  // Group Management
   document.getElementById('create-group-btn')?.addEventListener('click', openCreateGroupForm);
+  document.getElementById('join-group-btn')?.addEventListener('click', openJoinGroupForm);
 
-  // Logout
+  // Header Menus
+  document.getElementById('menu-left-btn')?.addEventListener('click', toggleSidebar);
+  document.getElementById('menu-right-btn')?.addEventListener('click', toggleDropdownMenu);
+  document.getElementById('sidebar-close-btn')?.addEventListener('click', closeSidebar);
+  document.getElementById('sidebar-overlay')?.addEventListener('click', closeSidebar);
+
+  // Sidebar Items
   document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+  document.getElementById('settings-btn')?.addEventListener('click', openSettings);
+
+  // Dropdown Menu Items
+  document.getElementById('group-settings-btn')?.addEventListener('click', openGroupSettings);
+  document.getElementById('invite-btn')?.addEventListener('click', openInviteModal);
+  document.getElementById('leave-group-btn')?.addEventListener('click', leaveGroup);
 
   // Tabs
   document.querySelectorAll('.app-tabs__tab').forEach(tab => {
@@ -74,20 +84,35 @@ const setupEventListeners = () => {
     });
   });
 
-  // Add Schedule/Todo buttons
-  document.getElementById('add-schedule-btn')?.addEventListener('click', () => openScheduleForm());
-  document.getElementById('schedule-add-btn')?.addEventListener('click', () => openScheduleForm());
-  document.getElementById('add-todo-btn')?.addEventListener('click', () => openTodoForm());
-  document.getElementById('todo-add-btn')?.addEventListener('click', () => openTodoForm());
+  // FAB Button
+  document.getElementById('fab-button')?.addEventListener('click', toggleFabMenu);
+  document.getElementById('fab-schedule')?.addEventListener('click', () => {
+    closeFabMenu();
+    openScheduleForm();
+  });
+  document.getElementById('fab-todo')?.addEventListener('click', () => {
+    closeFabMenu();
+    openTodoForm();
+  });
+
+  // Notification Bell
+  document.getElementById('notification-btn')?.addEventListener('click', openNotifications);
 
   // Forms
   document.getElementById('schedule-form')?.addEventListener('submit', handleScheduleFormSubmit);
   document.getElementById('todo-form')?.addEventListener('submit', handleTodoFormSubmit);
 
-  // Copy invite code
-  document.getElementById('copy-invite-btn')?.addEventListener('click', copyInviteCode);
+  // Todo Filter
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('filter-tab--active'));
+      tab.classList.add('filter-tab--active');
+      currentTodoFilter = tab.dataset.filter;
+      renderTodoList();
+    });
+  });
 
-  // Modal close buttons
+  // Modal Close
   document.querySelectorAll('[data-modal-close]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const modal = e.target.closest('.modal');
@@ -95,38 +120,13 @@ const setupEventListeners = () => {
     });
   });
 
-  // Close modal on background click
+  // Click outside modal
   document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
         closeModal(modal);
       }
     });
-  });
-
-  // Detail modal buttons
-  document.getElementById('schedule-edit-btn')?.addEventListener('click', () => {
-    closeModal(document.getElementById('modal-schedule-detail'));
-    openScheduleForm(editingScheduleId);
-  });
-
-  document.getElementById('schedule-delete-btn')?.addEventListener('click', () => {
-    if (confirm('일정을 삭제하시겠습니까?')) {
-      deleteSchedule(currentGroup, editingScheduleId);
-      closeModal(document.getElementById('modal-schedule-detail'));
-    }
-  });
-
-  document.getElementById('todo-edit-btn')?.addEventListener('click', () => {
-    closeModal(document.getElementById('modal-todo-detail'));
-    openTodoForm(editingTodoId);
-  });
-
-  document.getElementById('todo-delete-btn')?.addEventListener('click', () => {
-    if (confirm('할일을 삭제하시겠습니까?')) {
-      deleteTodo(currentGroup, editingTodoId);
-      closeModal(document.getElementById('modal-todo-detail'));
-    }
   });
 };
 
@@ -149,9 +149,47 @@ const handleLogout = async () => {
     if (scheduleUnsubscribe) scheduleUnsubscribe();
     if (todoUnsubscribe) todoUnsubscribe();
     showScreen('screen-login');
+    closeSidebar();
   } catch (error) {
     alert('로그아웃 실패: ' + error.message);
   }
+};
+
+// ===== Sidebar Management =====
+const toggleSidebar = () => {
+  const sidebar = document.getElementById('sidebar-left');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.toggle('active');
+  overlay.classList.toggle('active');
+};
+
+const closeSidebar = () => {
+  const sidebar = document.getElementById('sidebar-left');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.remove('active');
+  overlay.classList.remove('active');
+};
+
+// ===== Dropdown Menu =====
+const toggleDropdownMenu = () => {
+  const menu = document.getElementById('dropdown-menu-right');
+  menu.classList.toggle('active');
+};
+
+const closeDropdownMenu = () => {
+  const menu = document.getElementById('dropdown-menu-right');
+  menu.classList.remove('active');
+};
+
+// ===== FAB Menu =====
+const toggleFabMenu = () => {
+  const menu = document.getElementById('fab-menu');
+  menu.classList.toggle('active');
+};
+
+const closeFabMenu = () => {
+  const menu = document.getElementById('fab-menu');
+  menu.classList.remove('active');
 };
 
 // ===== Group Management =====
@@ -161,22 +199,21 @@ const loadGroupList = async () => {
 
   const groups = await getUserGroups(currentUser.uid);
   if (groups.length === 0) {
-    groupList.innerHTML = '<p class="empty-state">그룹이 없습니다. 새로 만들어보세요!</p>';
+    groupList.innerHTML = '<div class="empty-state">그룹이 없습니다. 새로 만들어보세요!</div>';
     return;
   }
 
   groupList.innerHTML = groups.map(group => `
-    <div class="group-item" data-group-id="${group.id}">
-      <span class="group-item__name">${group.name}</span>
-      <span class="group-item__arrow">›</span>
+    <div class="group-item">
+      <div class="group-item__name">${group.name}</div>
+      <div class="group-item__info">${group.members.length}명 • ${new Date(group.createdAt.seconds * 1000).toLocaleDateString()}</div>
+      <button type="button" class="btn btn--sm btn--primary" style="margin-top: 8px;">진입</button>
     </div>
   `).join('');
 
-  document.querySelectorAll('.group-item').forEach(item => {
-    item.addEventListener('click', async () => {
-      const groupId = item.dataset.groupId;
-      const group = groups.find(g => g.id === groupId);
-      selectGroup(group);
+  document.querySelectorAll('.group-item').forEach((item, idx) => {
+    item.querySelector('button').addEventListener('click', () => {
+      selectGroup(groups[idx]);
     });
   });
 };
@@ -184,36 +221,53 @@ const loadGroupList = async () => {
 const selectGroup = async (group) => {
   currentGroup = group.id;
   currentGroupData = group;
-  document.getElementById('current-group-name').textContent = group.name;
+  document.getElementById('header-group-name').textContent = group.name;
 
-  const groups = await getUserGroups(currentUser.uid);
-  const inviteCode = group.inviteCode;
-  document.getElementById('invite-code').textContent = inviteCode;
+  // Update sidebar group list
+  updateSidebarGroupList();
 
   showScreen('screen-app');
 
-  // Load members
   members = await getGroupMembers(currentGroup);
 
-  // Load data
   if (scheduleUnsubscribe) scheduleUnsubscribe();
   if (todoUnsubscribe) todoUnsubscribe();
 
   scheduleUnsubscribe = listenSchedules(currentGroup, (data) => {
     schedules = data;
     renderScheduleList();
-    renderSchedulePreview();
-    loadAISummary();
+    renderTodaySection();
   });
 
   todoUnsubscribe = listenTodos(currentGroup, (data) => {
     todos = data;
     renderTodoList();
-    renderTodoPreview();
+    renderTodaySection();
     loadAISummary();
   });
 
   renderMemberBar();
+  loadAISummary();
+  closeSidebar();
+};
+
+const updateSidebarGroupList = async () => {
+  const groups = await getUserGroups(currentUser.uid);
+  const groupSelectList = document.getElementById('group-select-list');
+
+  groupSelectList.innerHTML = groups.map(group => `
+    <div class="group-select-item ${group.id === currentGroup ? 'active' : ''}" data-group-id="${group.id}">
+      ${group.name}
+    </div>
+  `).join('');
+
+  document.querySelectorAll('.group-select-item').forEach(item => {
+    item.addEventListener('click', async () => {
+      const groupId = item.dataset.groupId;
+      const selectedGroup = groups.find(g => g.id === groupId);
+      await selectGroup(selectedGroup);
+    });
+  });
 };
 
 const openCreateGroupForm = () => {
@@ -225,28 +279,51 @@ const openCreateGroupForm = () => {
   }
 };
 
+const openJoinGroupForm = () => {
+  const inviteCode = prompt('초대 코드를 입력하세요:');
+  if (inviteCode) {
+    joinGroup(currentUser.uid, inviteCode).then(group => {
+      selectGroup(group);
+    }).catch(error => alert('그룹 참여 실패: ' + error.message));
+  }
+};
+
+const openGroupSettings = () => {
+  alert('그룹 설정 기능은 준비 중입니다');
+  closeDropdownMenu();
+};
+
+const openInviteModal = () => {
+  const inviteCode = currentGroupData?.inviteCode || 'CODE123';
+  alert(`초대 코드: ${inviteCode}\n\n이 코드를 복사해서 공유하세요!`);
+  closeDropdownMenu();
+};
+
+const leaveGroup = () => {
+  if (confirm('정말 이 그룹에서 나가시겠어요?')) {
+    alert('그룹 나가기 기능은 준비 중입니다');
+    closeDropdownMenu();
+  }
+};
+
 // ===== Tab Management =====
 const switchTab = (tabName) => {
   activeTab = tabName;
 
-  // Update tab buttons
   document.querySelectorAll('.app-tabs__tab').forEach(tab => {
     tab.classList.toggle('app-tabs__tab--active', tab.dataset.tab === tabName);
   });
 
-  // Update tab content
   document.querySelectorAll('.app-tab-content').forEach(content => {
     content.classList.toggle('app-tab-content--active', content.dataset.tabContent === tabName);
   });
 
-  // Render content for current tab
   if (tabName === 'schedule') {
     renderScheduleList();
   } else if (tabName === 'todo') {
     renderTodoList();
   } else if (tabName === 'home') {
-    renderSchedulePreview();
-    renderTodoPreview();
+    renderTodaySection();
     loadAISummary();
   }
 };
@@ -262,8 +339,105 @@ const loadAISummary = async () => {
     const summary = await getAISummary(schedules, todos, members);
     summaryCard.innerHTML = `<p>${summary.replace(/\n/g, '<br>')}</p>`;
   } catch (error) {
-    summaryCard.innerHTML = `<p class="text-secondary">${error.message}</p>`;
+    summaryCard.innerHTML = `<p>${error.message}</p>`;
   }
+};
+
+// ===== Home Screen Sections =====
+const renderTodaySection = () => {
+  const todaySection = document.getElementById('today-section');
+  if (!todaySection) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const todaySchedules = schedules.filter(s => {
+    const startDate = new Date(s.startDate);
+    const endDate = new Date(s.endDate);
+    return startDate <= today && endDate >= today;
+  });
+
+  const todayTodos = todos.filter(t => {
+    const dueDate = new Date(t.dueDate);
+    return !t.completed && dueDate.toDateString() === today.toDateString();
+  });
+
+  if (todaySchedules.length === 0 && todayTodos.length === 0) {
+    todaySection.innerHTML = '<div class="empty-state">오늘의 일정과 할일이 없습니다</div>';
+    return;
+  }
+
+  let html = '';
+
+  todaySchedules.forEach(s => {
+    html += `
+      <div class="today-card">
+        <div class="today-card-title">📅 ${s.title}</div>
+        <div class="today-card-time">${s.startTime} ~ ${s.endTime}</div>
+        <div class="today-card-time">담당: ${s.member}</div>
+      </div>
+    `;
+  });
+
+  todayTodos.forEach(t => {
+    html += `
+      <div class="today-card">
+        <div class="today-card-title">✓ ${t.title}</div>
+        <div class="today-card-time">마감: ${t.endTime}</div>
+        <div class="today-card-time">담당: ${t.member}</div>
+      </div>
+    `;
+  });
+
+  todaySection.innerHTML = html;
+};
+
+const renderActivityFeed = () => {
+  const activityFeed = document.getElementById('activity-feed');
+  if (!activityFeed) return;
+
+  if (schedules.length === 0 && todos.length === 0) {
+    activityFeed.innerHTML = '<div class="empty-state">아직 활동이 없습니다</div>';
+    return;
+  }
+
+  const recentItems = [
+    ...schedules.map(s => ({ type: 'schedule', ...s, createdAt: s.createdAt })),
+    ...todos.map(t => ({ type: 'todo', ...t, createdAt: t.createdAt }))
+  ].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5);
+
+  activityFeed.innerHTML = recentItems.map(item => {
+    const date = new Date((item.createdAt?.seconds || 0) * 1000);
+    const timeAgo = getTimeAgo(date);
+
+    if (item.type === 'schedule') {
+      return `
+        <div class="activity-card">
+          <div class="activity-title">🆕 [${item.member}]이 일정을 추가했습니다</div>
+          <div class="activity-time">${item.title} • ${timeAgo}</div>
+          <button type="button" class="activity-action">확인하기</button>
+        </div>
+      `;
+    } else {
+      return `
+        <div class="activity-card">
+          <div class="activity-title">🆕 [${item.member}]이 할일을 추가했습니다</div>
+          <div class="activity-time">${item.title} • ${timeAgo}</div>
+          <button type="button" class="activity-action">확인하기</button>
+        </div>
+      `;
+    }
+  }).join('');
+};
+
+const getTimeAgo = (date) => {
+  const now = new Date();
+  const diff = Math.floor((now - date) / 1000);
+
+  if (diff < 60) return '방금 전';
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  return `${Math.floor(diff / 86400)}일 전`;
 };
 
 // ===== Schedule Management =====
@@ -279,7 +453,6 @@ const openScheduleForm = (scheduleId = null) => {
     document.getElementById('schedule-end-date').value = schedule.endDate;
     document.getElementById('schedule-start-time').value = schedule.startTime || '';
     document.getElementById('schedule-end-time').value = schedule.endTime || '';
-    document.getElementById('schedule-description').value = schedule.description || '';
     modal.querySelector('.modal-title').textContent = '일정 수정';
   } else {
     form.reset();
@@ -297,7 +470,6 @@ const handleScheduleFormSubmit = async (e) => {
   const endDate = document.getElementById('schedule-end-date').value;
   const startTime = document.getElementById('schedule-start-time').value;
   const endTime = document.getElementById('schedule-end-time').value;
-  const description = document.getElementById('schedule-description').value;
 
   if (new Date(endDate) < new Date(startDate)) {
     alert('종료 날짜가 시작 날짜보다 이전일 수 없습니다.');
@@ -310,7 +482,6 @@ const handleScheduleFormSubmit = async (e) => {
     endDate,
     startTime: startTime || '00:00',
     endTime: endTime || '23:59',
-    description,
     member: currentUser.displayName
   };
 
@@ -327,92 +498,21 @@ const handleScheduleFormSubmit = async (e) => {
 };
 
 const renderScheduleList = () => {
-  const tabContent = document.querySelector('[data-tab-content="schedule"]');
-  if (!tabContent) return;
-
-  const listContainer = tabContent.querySelector('#schedule-list');
+  const listContainer = document.querySelector('.schedule-list');
   if (!listContainer) return;
 
   if (schedules.length === 0) {
-    listContainer.innerHTML = '<div class="empty-state"><div class="empty-state__icon">📅</div><p class="empty-state__text">일정이 없습니다</p></div>';
+    listContainer.innerHTML = '<div class="empty-state">📅 일정이 없습니다</div>';
     return;
   }
 
   listContainer.innerHTML = schedules.map(schedule => `
     <div class="schedule-item" data-schedule-id="${schedule.id}">
-      <div class="schedule-item__content">
-        <div class="schedule-item__title">${schedule.title}</div>
-        <div class="schedule-item__date">${schedule.startDate} ~ ${schedule.endDate}</div>
-        <div class="schedule-item__member">${schedule.member}</div>
-      </div>
+      <div class="schedule-item__title">${schedule.title}</div>
+      <div class="schedule-item__date">${schedule.startDate} ~ ${schedule.endDate}</div>
+      <div class="schedule-item__member">담당: ${schedule.member}</div>
     </div>
   `).join('');
-
-  listContainer.querySelectorAll('.schedule-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const scheduleId = item.dataset.scheduleId;
-      showScheduleDetail(scheduleId);
-    });
-  });
-};
-
-const renderSchedulePreview = () => {
-  const homeTab = document.querySelector('[data-tab-content="home"]');
-  if (!homeTab) return;
-
-  const previewContainer = homeTab.querySelector('#schedule-preview');
-  if (!previewContainer) return;
-
-  const upcoming = schedules.slice(0, 3);
-  if (upcoming.length === 0) {
-    previewContainer.innerHTML = '<div class="empty-state"><p class="empty-state__text">다가오는 일정이 없습니다</p></div>';
-    return;
-  }
-
-  previewContainer.innerHTML = upcoming.map(schedule => `
-    <div class="schedule-item">
-      <div class="schedule-item__content">
-        <div class="schedule-item__title">${schedule.title}</div>
-        <div class="schedule-item__date">${schedule.startDate} ~ ${schedule.endDate}</div>
-      </div>
-    </div>
-  `).join('');
-};
-
-const showScheduleDetail = (scheduleId) => {
-  const schedule = schedules.find(s => s.id === scheduleId);
-  if (!schedule) return;
-
-  editingScheduleId = scheduleId;
-  const modal = document.getElementById('modal-schedule-detail');
-  const detailContent = modal.querySelector('#schedule-detail-content');
-
-  detailContent.innerHTML = `
-    <div class="detail-row">
-      <span class="detail-label">제목</span>
-      <span class="detail-value">${schedule.title}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">날짜</span>
-      <span class="detail-value">${schedule.startDate} ~ ${schedule.endDate}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">시간</span>
-      <span class="detail-value">${schedule.startTime} ~ ${schedule.endTime}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">담당자</span>
-      <span class="detail-value">${schedule.member}</span>
-    </div>
-    ${schedule.description ? `
-    <div class="detail-row">
-      <span class="detail-label">설명</span>
-      <span class="detail-value">${schedule.description}</span>
-    </div>
-    ` : ''}
-  `;
-
-  openModal(modal);
 };
 
 // ===== Todo Management =====
@@ -468,110 +568,59 @@ const handleTodoFormSubmit = async (e) => {
 };
 
 const renderTodoList = () => {
-  const tabContent = document.querySelector('[data-tab-content="todo"]');
-  if (!tabContent) return;
-
-  const listContainer = tabContent.querySelector('#todo-list');
+  const listContainer = document.querySelector('.todo-list');
   if (!listContainer) return;
 
-  if (todos.length === 0) {
-    listContainer.innerHTML = '<div class="empty-state"><div class="empty-state__icon">✓</div><p class="empty-state__text">할일이 없습니다</p></div>';
+  let filteredTodos = todos;
+
+  if (currentTodoFilter === 'pending') {
+    filteredTodos = todos.filter(t => !t.completed);
+  } else if (currentTodoFilter === 'completed') {
+    filteredTodos = todos.filter(t => t.completed);
+  }
+
+  if (filteredTodos.length === 0) {
+    listContainer.innerHTML = '<div class="empty-state">✓ 할일이 없습니다</div>';
     return;
   }
 
-  listContainer.innerHTML = todos.map(todo => `
-    <div class="todo-item" data-todo-id="${todo.id}">
-      <div class="todo-item__content">
-        <div class="todo-item__title">${todo.title}</div>
-        <div class="todo-item__date">마감: ${todo.dueDate}</div>
-        <div class="todo-item__member">${todo.member}</div>
+  listContainer.innerHTML = filteredTodos.map(todo => {
+    const dueDate = new Date(todo.dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isUrgent = dueDate <= today && !todo.completed;
+
+    return `
+      <div class="todo-item ${isUrgent ? 'todo-item--urgent' : ''}">
+        <div class="todo-item__header">
+          <input type="checkbox" class="todo-item__checkbox" ${todo.completed ? 'checked' : ''}>
+          <div class="todo-item__title">${todo.title}</div>
+          ${isUrgent ? '<span class="todo-item__priority">긴급</span>' : ''}
+        </div>
+        <div class="todo-item__meta">마감: ${todo.dueDate} ${todo.endTime}</div>
+        <div class="todo-item__member">담당: ${todo.member}</div>
       </div>
-    </div>
-  `).join('');
-
-  listContainer.querySelectorAll('.todo-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const todoId = item.dataset.todoId;
-      showTodoDetail(todoId);
-    });
-  });
-};
-
-const renderTodoPreview = () => {
-  const homeTab = document.querySelector('[data-tab-content="home"]');
-  if (!homeTab) return;
-
-  const previewContainer = homeTab.querySelector('#todo-preview');
-  if (!previewContainer) return;
-
-  const pending = todos.filter(t => !t.completed).slice(0, 3);
-  if (pending.length === 0) {
-    previewContainer.innerHTML = '<div class="empty-state"><p class="empty-state__text">진행 중인 할일이 없습니다</p></div>';
-    return;
-  }
-
-  previewContainer.innerHTML = pending.map(todo => `
-    <div class="todo-item">
-      <div class="todo-item__content">
-        <div class="todo-item__title">${todo.title}</div>
-        <div class="todo-item__date">마감: ${todo.dueDate}</div>
-      </div>
-    </div>
-  `).join('');
-};
-
-const showTodoDetail = (todoId) => {
-  const todo = todos.find(t => t.id === todoId);
-  if (!todo) return;
-
-  editingTodoId = todoId;
-  const modal = document.getElementById('modal-todo-detail');
-  const detailContent = modal.querySelector('#todo-detail-content');
-
-  detailContent.innerHTML = `
-    <div class="detail-row">
-      <span class="detail-label">할일</span>
-      <span class="detail-value">${todo.title}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">마감</span>
-      <span class="detail-value">${todo.dueDate}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">시간</span>
-      <span class="detail-value">${todo.startTime} ~ ${todo.endTime}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">담당자</span>
-      <span class="detail-value">${todo.member}</span>
-    </div>
-  `;
-
-  openModal(modal);
+    `;
+  }).join('');
 };
 
 // ===== Member Bar =====
 const renderMemberBar = () => {
-  const homeTab = document.querySelector('[data-tab-content="home"]');
-  if (!homeTab) return;
-
-  const memberBar = homeTab.querySelector('#member-bar');
+  const memberBar = document.getElementById('member-bar');
   if (!memberBar) return;
 
+  const colors = ['orange', 'yellow', 'green', 'blue'];
   memberBar.innerHTML = members.map((member, index) => {
     const initials = member.name.substring(0, 2).toUpperCase();
-    return `<div class="member-item" title="${member.name}">${initials}</div>`;
+    const colorClass = colors[index % colors.length];
+    return `<div class="member-item member-item--${colorClass}" title="${member.name}">${initials}</div>`;
   }).join('');
 };
 
-// ===== Invite =====
-const copyInviteCode = () => {
-  const inviteCode = document.getElementById('invite-code').textContent;
-  navigator.clipboard.writeText(inviteCode).then(() => {
-    showToast('초대 코드가 복사되었습니다');
-  }).catch(() => {
-    alert('복사 실패. 수동으로 복사해주세요: ' + inviteCode);
-  });
+// ===== Notifications =====
+const openNotifications = () => {
+  const modal = document.getElementById('modal-notifications');
+  openModal(modal);
 };
 
 // ===== Modal Management =====
@@ -585,19 +634,13 @@ const closeModal = (modal) => {
   document.body.style.overflow = '';
 };
 
-// ===== Toast =====
-const showToast = (message) => {
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.textContent = message;
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
-    toast.remove();
-  }, 3000);
+// ===== Other Functions =====
+const openSettings = () => {
+  alert('설정 기능은 준비 중입니다');
+  closeSidebar();
 };
 
-// ===== Utility =====
+// Export for testing
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     initializeApp,

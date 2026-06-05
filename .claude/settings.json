@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m 'docs: Add setup guide and environment template *)",
+      "Bash(git commit -m 'config: Update Firebase configuration with actual project settings *)",
+      "Bash(git commit -m 'fix: Correct layout structure for screen display and app-main scrolling *)",
+      "Bash(firebase deploy *)"
+    ]
+  }
+}
