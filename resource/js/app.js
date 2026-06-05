@@ -96,7 +96,8 @@ function renderScheduleList() {
   if (!container) return;
 
   const filtered = allSchedules.filter(s => {
-    if (!isFutureOrToday(s.date)) return false;
+    const startDate = s.startDate || s.date;
+    if (!isFutureOrToday(startDate)) return false;
     if (filterMemberId !== 'all' && !(s.memberIds || []).includes(filterMemberId)) return false;
     return true;
   });
@@ -106,11 +107,12 @@ function renderScheduleList() {
     return;
   }
 
-  // 날짜별 그룹핑
+  // 날짜별 그룹핑 (시작 날짜 기준)
   const grouped = {};
   filtered.forEach(s => {
-    if (!grouped[s.date]) grouped[s.date] = [];
-    grouped[s.date].push(s);
+    const startDate = s.startDate || s.date;
+    if (!grouped[startDate]) grouped[startDate] = [];
+    grouped[startDate].push(s);
   });
 
   container.innerHTML = Object.keys(grouped).sort().map(date => `
@@ -121,13 +123,17 @@ function renderScheduleList() {
     ${grouped[date].map(s => {
       const member = currentMembers.find(m => (s.memberIds||[]).includes(m.id));
       const color = member ? member.color : '#1677ff';
+      const startDate = s.startDate || s.date;
+      const endDate = s.endDate;
+      const dateRange = startDate === endDate ? '' : ` ~ ${formatDate(endDate)}`;
+      const timeDisplay = s.startTime && s.endTime ? `${s.startTime} ~ ${s.endTime}` : s.startTime ? s.startTime : '';
       return `
         <div class="schedule-card" data-schedule-id="${s.id}" style="margin: 0 20px 8px;">
           <div class="schedule-card__dot" style="background:${color}"></div>
           <div class="schedule-card__body">
             <div class="schedule-card__title">${s.title}</div>
             <div class="schedule-card__meta">
-              ${s.time ? `<span>🕐 ${s.time}</span>` : ''}
+              ${timeDisplay ? `<span>🕐 ${timeDisplay}</span>` : ''}
               ${member ? `<span class="schedule-card__member">
                 <span class="schedule-card__member-dot" style="background:${member.color}20">${member.icon}</span>
                 ${member.nickname}
@@ -248,7 +254,22 @@ function openScheduleDetail(scheduleId) {
   const member = currentMembers.find(m => (s.memberIds||[]).includes(m.id));
   const overlay = document.querySelector('[data-modal="schedule-detail"]');
   overlay.querySelector('.modal__title').textContent = s.title;
-  overlay.querySelector('[data-detail-date]').textContent = formatDate(s.date) + (s.time ? ' ' + s.time : '');
+
+  const startDate = s.startDate || s.date;
+  const endDate = s.endDate;
+  let dateStr = formatDate(startDate);
+  if (endDate && startDate !== endDate) {
+    dateStr += ` ~ ${formatDate(endDate)}`;
+  }
+  if (s.startTime && s.endTime) {
+    dateStr += ` ${s.startTime} ~ ${s.endTime}`;
+  } else if (s.startTime) {
+    dateStr += ` ${s.startTime}`;
+  } else if (s.time) {
+    dateStr += ` ${s.time}`;
+  }
+
+  overlay.querySelector('[data-detail-date]').textContent = dateStr;
   overlay.querySelector('[data-detail-member]').textContent = member ? `${member.icon} ${member.nickname}` : '전체';
   overlay.querySelector('[data-detail-memo]').textContent = s.memo || '메모 없음';
   overlay.querySelector('[data-detail-edit]').onclick = () => { overlay.classList.remove('active'); openScheduleForm(s); };
@@ -266,9 +287,14 @@ function openScheduleForm(existing = null) {
   const overlay = document.querySelector('[data-modal="schedule-form"]');
   const form = overlay.querySelector('[data-schedule-form]');
   overlay.querySelector('.modal__title').textContent = existing ? '일정 수정' : '일정 등록';
+  const today = new Date().toISOString().split('T')[0];
+
+  const startDate = existing?.startDate || existing?.date || today;
+  form.querySelector('[data-field="startDate"]').value = startDate;
+  form.querySelector('[data-field="startTime"]').value = existing?.startTime || existing?.time || '';
+  form.querySelector('[data-field="endDate"]').value = existing?.endDate || '';
+  form.querySelector('[data-field="endTime"]').value = existing?.endTime || '';
   form.querySelector('[data-field="title"]').value = existing?.title || '';
-  form.querySelector('[data-field="date"]').value = existing?.date || new Date().toISOString().split('T')[0];
-  form.querySelector('[data-field="time"]').value = existing?.time || '';
   form.querySelector('[data-field="memo"]').value = existing?.memo || '';
 
   // 멤버 선택
@@ -278,12 +304,14 @@ function openScheduleForm(existing = null) {
   form.onsubmit = async (e) => {
     e.preventDefault();
     const title = form.querySelector('[data-field="title"]').value.trim();
-    const date = form.querySelector('[data-field="date"]').value;
-    const time = form.querySelector('[data-field="time"]').value;
+    const startDate = form.querySelector('[data-field="startDate"]').value;
+    const startTime = form.querySelector('[data-field="startTime"]').value;
+    const endDate = form.querySelector('[data-field="endDate"]').value;
+    const endTime = form.querySelector('[data-field="endTime"]').value;
     const memo = form.querySelector('[data-field="memo"]').value.trim();
     const memberId = form.querySelector('[data-field="member"]').value;
-    if (!title || !date) return;
-    const data = { title, date, time, memo, memberIds: memberId ? [memberId] : [] };
+    if (!title || !startDate) return;
+    const data = { title, startDate, startTime, endDate, endTime, memo, memberIds: memberId ? [memberId] : [], date: startDate, time: startTime };
     if (existing) {
       await updateSchedule(currentGroup.id, existing.id, data, currentUser.uid, getMemberNickname());
     } else {

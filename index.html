@@ -275,17 +275,23 @@
       <form data-schedule-form style="display:flex; flex-direction:column; gap:16px; margin-top:8px;">
         <div class="form-group" style="margin:0">
           <label class="form-label">일정 이름 *</label>
-          <input class="form-input" type="text" placeholder="예) 팀 회의, 병원 예약" data-field="title" required>
+          <input class="form-input" type="text" placeholder="예) 팀 회의, 병원 예약, 출장" data-field="title" required>
         </div>
-        <div style="display:flex; gap:8px;">
-          <div class="form-group" style="margin:0; flex:1">
-            <label class="form-label">날짜 *</label>
-            <input class="form-input" type="date" data-field="date" required>
-          </div>
-          <div class="form-group" style="margin:0; flex:1">
-            <label class="form-label">시간</label>
-            <input class="form-input" type="time" data-field="time">
-          </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">시작 날짜 *</label>
+          <input class="form-input" type="date" data-field="startDate" required>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">시작 시간</label>
+          <input class="form-input" type="time" data-field="startTime">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">끝나는 날짜</label>
+          <input class="form-input" type="date" data-field="endDate">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">끝나는 시간</label>
+          <input class="form-input" type="time" data-field="endTime">
         </div>
         <div class="form-group" style="margin:0">
           <label class="form-label">담당 멤버</label>
