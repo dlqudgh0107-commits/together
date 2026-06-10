@@ -5,7 +5,11 @@
       "Read(//c/Users/bhl/OneDrive - YBM, Inc/MY-WORKSPACE/**)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\bhl\\\\OneDrive - YBM, Inc\\\\MY-WORKSPACE\\\\together-session1\" -Force)",
       "Bash(Select-Object Name)",
-      "Bash(git ls-remote *)"
+      "Bash(git ls-remote *)",
+      "PowerShell(winget install *)",
+      "PowerShell(gh run *)",
+      "PowerShell(gh auth *)",
+      "PowerShell(Test-Path *)"
     ]
   }
 }
