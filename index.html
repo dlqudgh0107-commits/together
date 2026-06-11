@@ -69,12 +69,12 @@
 
   <!-- 그룹 설정 화면 -->
   <div id="screen-group" class="screen group-screen">
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+    <div class="group-screen__header">
       <div>
         <h2 class="group-screen__title">시작하기</h2>
         <p class="group-screen__subtitle">새 그룹을 만들거나<br>초대 코드로 기존 그룹에 참여하세요</p>
       </div>
-      <button data-back-to-home style="background: none; border: none; font-size: 24px; cursor: pointer; display: none;" title="돌아가기">→</button>
+      <button class="group-screen__back-btn" data-back-to-home title="돌아가기">→</button>
     </div>
 
     <div class="group-tab">
@@ -112,30 +112,30 @@
     </div>
 
     <!-- 초대 패널 -->
-    <div data-group-panel="invite" style="display:none">
-      <div style="background: #f5f5f5; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
-        <div style="font-size: 12px; color: #00000073; margin-bottom: 8px;">초대 코드</div>
-        <div style="font-size: 32px; font-weight: 700; letter-spacing: 4px; margin-bottom: 16px; font-family: 'Courier New', monospace;" data-invite-code>ABC123</div>
-        <div style="display: flex; gap: 10px;">
-          <button class="btn-primary" data-copy-invite style="background: #1677ff; flex: 1;">코드 복사</button>
-          <button class="btn-primary" data-new-invite-code style="background: #52c41a; flex: 1;">새 코드 생성</button>
+    <div class="group-panel" data-group-panel="invite">
+      <div class="invite-code-display">
+        <div class="invite-code-display__label">초대 코드</div>
+        <div class="invite-code-display__code" data-invite-code>ABC123</div>
+        <div class="invite-code-display__actions">
+          <button class="btn-primary btn-primary--flex" data-copy-invite>코드 복사</button>
+          <button class="btn-primary btn-primary--flex btn-primary--green" data-new-invite-code>새 코드 생성</button>
         </div>
       </div>
-      <div style="background: #fff1f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-        <div style="font-size: 12px; color: #ff4d4f; font-weight: 600; margin-bottom: 8px;">📍 초대 방법</div>
-        <div style="font-size: 13px; color: #ff4d4f; line-height: 1.6;">
+      <div class="invite-guide">
+        <div class="invite-guide__title">📍 초대 방법</div>
+        <div class="invite-guide__text">
           1. 위의 초대 코드를 복사해주세요<br>
           2. 가족/팀원에게 아래 링크와 코드를 공유<br>
-          <strong style="display: block; margin-top: 8px;">https://together-app-6cabd.web.app</strong>
+          <strong class="invite-guide__link">https://together-app-6cabd.web.app</strong>
         </div>
       </div>
     </div>
 
     <!-- 참여 패널 -->
-    <div data-group-panel="join" style="display:none">
+    <div class="group-panel" data-group-panel="join">
       <div class="form-group">
         <label class="form-label">초대 코드 6자리</label>
-        <input class="form-input" type="text" placeholder="초대 코드 입력" data-field="invite-code" maxlength="6" style="text-transform:uppercase; letter-spacing:4px; text-align:center; font-size:20px; font-weight:700;">
+        <input class="form-input form-input--code" type="text" placeholder="초대 코드 입력" data-field="invite-code" maxlength="6">
       </div>
       <div class="form-group">
         <label class="form-label">내 닉네임</label>
@@ -150,14 +150,14 @@
   </div>
 
   <!-- 그룹 선택 모달 -->
-  <div class="modal-overlay" data-modal="group-list" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center;">
-    <div class="modal" style="background: #ffffff; border-radius: 16px; padding: 24px; width: 90%; max-width: 380px; max-height: 60vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h3 style="font-size: 18px; font-weight: 700; margin: 0;">그룹 선택</h3>
-        <button data-modal-close style="background: none; border: none; font-size: 24px; cursor: pointer;">✕</button>
+  <div class="modal-overlay modal-overlay--center" data-modal="group-list">
+    <div class="modal modal--dialog">
+      <div class="modal__header">
+        <h3 class="modal__title--dialog">그룹 선택</h3>
+        <button class="modal__close-btn" data-modal-close>✕</button>
       </div>
-      <div data-group-list style="display: flex; flex-direction: column; gap: 12px;"></div>
-      <button class="btn-primary" data-group-add-new style="margin-top: 20px; width: 100%;">새 그룹 만들기</button>
+      <div class="group-list" data-group-list></div>
+      <button class="btn-primary" data-group-add-new>새 그룹 만들기</button>
     </div>
   </div>
 
@@ -166,12 +166,12 @@
 
     <!-- 헤더 -->
     <div class="app-header">
-      <div class="app-header__group" data-group-switch style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+      <div class="app-header__group" data-group-switch>
         <span class="app-header__group-name" data-group-name>그룹명</span>
         <span class="app-header__group-arrow">▾</span>
       </div>
       <div class="app-header__actions">
-        <div class="app-header__btn" data-add-group title="그룹 추가/변경" style="cursor: pointer;">
+        <div class="app-header__btn" data-add-group title="그룹 추가/변경">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
         </div>
         <div class="app-header__btn" data-signout title="로그아웃">
@@ -206,26 +206,26 @@
         <div data-schedule-list></div>
 
         <!-- 진행중 할 일 -->
-        <div class="home-section" style="margin-top:8px;">
+        <div class="home-section home-section--mt">
           <div class="home-section__title">할 일</div>
         </div>
         <div data-todo-list></div>
       </div>
 
       <!-- 일정 탭 -->
-      <div data-tab-content="schedule" style="display:none">
+      <div class="tab-panel" data-tab-content="schedule">
         <div class="member-bar" data-member-bar></div>
         <div data-schedule-list></div>
       </div>
 
       <!-- 할일 탭 -->
-      <div data-tab-content="todo" style="display:none">
+      <div class="tab-panel" data-tab-content="todo">
         <div class="member-bar" data-member-bar></div>
         <div data-todo-list></div>
       </div>
 
       <!-- 알림장 탭 -->
-      <div data-tab-content="feed" style="display:none; padding-top:16px;">
+      <div class="tab-panel" data-tab-content="feed">
         <div data-feed-list></div>
       </div>
 
@@ -273,9 +273,9 @@
       <div class="modal__handle"></div>
       <div class="modal__title">무엇을 추가할까요?</div>
       <div class="modal__close" data-modal-close>✕</div>
-      <div style="display:flex; flex-direction:column; gap:12px;">
-        <button class="btn-primary" data-fab-schedule style="background:#1677ff;">📅 일정 등록</button>
-        <button class="btn-primary" data-fab-todo style="background:#52c41a;">✅ 할 일 추가</button>
+      <div class="modal__btn-group">
+        <button class="btn-primary" data-fab-schedule>📅 일정 등록</button>
+        <button class="btn-primary btn-primary--green" data-fab-todo>✅ 할 일 추가</button>
       </div>
     </div>
   </div>
@@ -286,22 +286,22 @@
       <div class="modal__handle"></div>
       <div class="modal__title">일정 상세</div>
       <div class="modal__close" data-modal-close>✕</div>
-      <div style="display:flex; flex-direction:column; gap:16px; margin-top:8px;">
+      <div class="modal__content">
         <div>
-          <div style="font-size:12px; color:#00000073; margin-bottom:4px;">날짜·시간</div>
-          <div style="font-size:15px; font-weight:500;" data-detail-date></div>
+          <div class="detail-label">날짜·시간</div>
+          <div class="detail-value" data-detail-date></div>
         </div>
         <div>
-          <div style="font-size:12px; color:#00000073; margin-bottom:4px;">담당 멤버</div>
-          <div style="font-size:15px; font-weight:500;" data-detail-member></div>
+          <div class="detail-label">담당 멤버</div>
+          <div class="detail-value" data-detail-member></div>
         </div>
         <div>
-          <div style="font-size:12px; color:#00000073; margin-bottom:4px;">메모</div>
-          <div style="font-size:14px; color:#00000073; line-height:1.6;" data-detail-memo></div>
+          <div class="detail-label">메모</div>
+          <div class="detail-memo" data-detail-memo></div>
         </div>
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <button class="btn-primary" data-detail-edit style="background:#f5f5f5; color:#000000e0;">수정</button>
-          <button class="btn-primary" data-detail-delete style="background:#fff1f0; color:#ff4d4f;">삭제</button>
+        <div class="modal__action-row">
+          <button class="btn-primary btn-primary--secondary" data-detail-edit>수정</button>
+          <button class="btn-primary btn-primary--danger" data-detail-delete>삭제</button>
         </div>
       </div>
     </div>
@@ -313,18 +313,18 @@
       <div class="modal__handle"></div>
       <div class="modal__title">할 일 상세</div>
       <div class="modal__close" data-modal-close>✕</div>
-      <div style="display:flex; flex-direction:column; gap:16px; margin-top:8px;">
+      <div class="modal__content">
         <div>
-          <div style="font-size:12px; color:#00000073; margin-bottom:4px;">기간·시간</div>
-          <div style="font-size:15px; font-weight:500;" data-todo-detail-date></div>
+          <div class="detail-label">기간·시간</div>
+          <div class="detail-value" data-todo-detail-date></div>
         </div>
         <div>
-          <div style="font-size:12px; color:#00000073; margin-bottom:4px;">담당자</div>
-          <div style="font-size:15px; font-weight:500;" data-todo-detail-assignee></div>
+          <div class="detail-label">담당자</div>
+          <div class="detail-value" data-todo-detail-assignee></div>
         </div>
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <button class="btn-primary" data-todo-detail-edit style="background:#f5f5f5; color:#000000e0;">수정</button>
-          <button class="btn-primary" data-todo-detail-delete style="background:#fff1f0; color:#ff4d4f;">삭제</button>
+        <div class="modal__action-row">
+          <button class="btn-primary btn-primary--secondary" data-todo-detail-edit>수정</button>
+          <button class="btn-primary btn-primary--danger" data-todo-detail-delete>삭제</button>
         </div>
       </div>
     </div>
@@ -336,32 +336,32 @@
       <div class="modal__handle"></div>
       <div class="modal__title">일정 등록</div>
       <div class="modal__close" data-modal-close>✕</div>
-      <form data-schedule-form style="display:flex; flex-direction:column; gap:16px; margin-top:8px;">
-        <div class="form-group" style="margin:0">
+      <form class="modal__content" data-schedule-form>
+        <div class="form-group">
           <label class="form-label">일정 이름 *</label>
           <input class="form-input" type="text" placeholder="예) 팀 회의, 병원 예약, 출장" data-field="title" required>
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">시작 날짜 *</label>
           <input class="form-input" type="date" data-field="startDate" required>
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">시작 시간</label>
           <input class="form-input" type="time" data-field="startTime">
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">끝나는 날짜</label>
           <input class="form-input" type="date" data-field="endDate">
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">끝나는 시간</label>
           <input class="form-input" type="time" data-field="endTime">
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">담당 멤버</label>
-          <select class="form-input" data-field="member" style="cursor:pointer;"></select>
+          <select class="form-input" data-field="member"></select>
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">메모</label>
           <input class="form-input" type="text" placeholder="추가 메모 (선택)" data-field="memo">
         </div>
@@ -376,28 +376,28 @@
       <div class="modal__handle"></div>
       <div class="modal__title">할 일 추가</div>
       <div class="modal__close" data-modal-close>✕</div>
-      <form data-todo-form style="display:flex; flex-direction:column; gap:16px; margin-top:8px;">
-        <div class="form-group" style="margin:0">
+      <form class="modal__content" data-todo-form>
+        <div class="form-group">
           <label class="form-label">할 일 *</label>
           <input class="form-input" type="text" placeholder="예) 기획서 초안 작성" data-field="title" required>
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">담당자</label>
-          <select class="form-input" data-field="assignee" style="cursor:pointer;"></select>
+          <select class="form-input" data-field="assignee"></select>
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">시작 날짜</label>
           <input class="form-input" type="date" data-field="startDate">
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">시작 시간</label>
           <input class="form-input" type="time" data-field="startTime">
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">마감 날짜</label>
           <input class="form-input" type="date" data-field="dueDate">
         </div>
-        <div class="form-group" style="margin:0">
+        <div class="form-group">
           <label class="form-label">마감 시간</label>
           <input class="form-input" type="time" data-field="endTime">
         </div>

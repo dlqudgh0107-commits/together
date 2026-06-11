@@ -127,7 +127,7 @@
 .btn-primary:disabled {background: #d9d9d9; cursor: not-allowed; transform: none;}
 .invite-code-display {background: #f5f5f5; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0;}
 .invite-code-display__label {font-size: 12px; color: #00000073; margin-bottom: 8px;}
-.invite-code-display__code {font-size: 32px; font-weight: 700; color: #1677ff; letter-spacing: 6px;}
+.invite-code-display__code {font-size: 32px; font-weight: 700; color: #1677ff; letter-spacing: 4px; margin-bottom: 16px; font-family: 'Courier New', monospace;}
 
 /* ===== MODAL ===== */
 .modal-overlay {position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: flex-end;}
@@ -162,3 +162,52 @@
   .modal-overlay {justify-content: center; align-items: center;}
   .modal {border-radius: 20px; max-width: 390px; padding-bottom: 24px;}
 }
+
+/* ===== GROUP SCREEN ===== */
+.group-screen__header {display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;}
+.group-screen__back-btn {background: none; border: none; font-size: 24px; cursor: pointer; display: none;}
+.group-panel {display: none;}
+
+/* ===== INVITE CODE ===== */
+.invite-code-display__actions {display: flex; gap: 10px;}
+.btn-primary--flex {flex: 1; margin-top: 0;}
+.btn-primary--green {background: #52c41a;}
+
+/* ===== INVITE GUIDE ===== */
+.invite-guide {background: #fff1f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;}
+.invite-guide__title {font-size: 12px; color: #ff4d4f; font-weight: 600; margin-bottom: 8px;}
+.invite-guide__text {font-size: 13px; color: #ff4d4f; line-height: 1.6;}
+.invite-guide__link {display: block; margin-top: 8px;}
+
+/* ===== FORM INPUT MODIFIERS ===== */
+.form-input--code {text-transform: uppercase; letter-spacing: 4px; text-align: center; font-size: 20px; font-weight: 700;}
+select.form-input {cursor: pointer;}
+
+/* ===== GROUP LIST MODAL ===== */
+.modal-overlay--center {align-items: center; justify-content: center; z-index: 300;}
+.modal--dialog {border-radius: 16px; padding: 24px; width: 90%; max-width: 380px; max-height: 60vh; box-shadow: 0 8px 32px rgba(0,0,0,0.12);}
+.modal--dialog > .btn-primary {margin-top: 20px;}
+.modal__header {display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;}
+.modal__close-btn {background: none; border: none; font-size: 24px; cursor: pointer;}
+.modal__title--dialog {font-size: 18px; font-weight: 700; margin: 0;}
+.group-list {display: flex; flex-direction: column; gap: 12px;}
+
+/* ===== HOME ===== */
+.home-section--mt {margin-top: 8px;}
+
+/* ===== TAB PANELS ===== */
+.tab-panel {display: none;}
+[data-tab-content="feed"] {padding-top: 16px;}
+
+/* ===== MODAL CONTENT ===== */
+.modal .form-group {margin: 0;}
+.modal__content {display: flex; flex-direction: column; gap: 16px; margin-top: 8px;}
+.modal__btn-group {display: flex; flex-direction: column; gap: 12px;}
+.modal__btn-group .btn-primary {margin-top: 0;}
+.modal__action-row {display: flex; gap: 8px; margin-top: 8px;}
+.modal__action-row .btn-primary {flex: 1; margin-top: 0;}
+.detail-label {font-size: 12px; color: #00000073; margin-bottom: 4px;}
+.detail-value {font-size: 15px; font-weight: 500;}
+.detail-memo {font-size: 14px; color: #00000073; line-height: 1.6;}
+.btn-primary--secondary {background: #f5f5f5; color: #000000e0;}
+.btn-primary--danger {background: #fff1f0; color: #ff4d4f;}
